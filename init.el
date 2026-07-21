@@ -19,6 +19,9 @@
   (set-default-coding-systems 'utf-8-unix)
   (setq locale-coding-system 'utf-8)
 
+  ;; Use Japanese names for weekdays and months.
+  (setq system-time-locale "Japanese_Japan.65001")
+
   ;; Add MSYS2 UCRT64 tools to the executable search path.
   (let ((msys2-bin "c:/msys64/ucrt64/bin"))
     (add-to-list 'exec-path msys2-bin)
@@ -57,13 +60,13 @@
 (setq-default cursor-type 'bar)
 (blink-cursor-mode 1)
 
-;; Install and load the Ef Light theme.
+;; Use the Ef Light theme.
 (use-package ef-themes
   :ensure t
   :config
   (load-theme 'ef-light t))
 
-;; Enable a minimal mode line after Emacs finishes starting.
+;; Use a minimal mode line.
 (use-package simple-modeline
   :ensure t
   :hook (after-init . simple-modeline-mode))
@@ -186,11 +189,23 @@
   (org-hide-emphasis-markers t)
   ;; Display descriptive links instead of complete link syntax.
   (org-link-descriptive t)
+  ;; Search these directories for agenda files.
+  (org-agenda-files '("~/Documents/org/"))
+  ;; Refile entries to headings up to level 3 in agenda files.
+  (org-refile-targets '((org-agenda-files :maxlevel . 3)))
+  ;; Display refile targets as file-based outline paths.
+  (org-refile-use-outline-path 'file)
+  (org-outline-path-complete-in-steps nil)
   ;; Display Org entities such as \alpha as symbols.
   ;; (org-pretty-entities t)
   :hook
   ;; Visually indent content according to its heading level.
-  (org-mode . org-indent-mode))
+  (org-mode . org-indent-mode)
+  :config
+  ;; Enable Calc source blocks in Org Babel.
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((calc . t))))
 
 ;; Reveal hidden Org markup around the element at point.
 (use-package org-appear
@@ -207,5 +222,10 @@
   ;; Reveal Org entity source text.
   (org-appear-autoentities t))
 
+;; Display floating-point Calc results in fixed-point notation.
+(use-package calc
+  :defer t
+  :config
+  (setq-default calc-float-format '(fix 20)))
 
 ;;; init.el ends here

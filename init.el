@@ -179,9 +179,20 @@
 ;;; Org mode
 
 (use-package org
+  :init
+  ;; Keep all Org data under a single directory.
+  (setq org-directory (expand-file-name "~/Documents/org/")
+        org-default-notes-file
+        (expand-file-name "inbox.org" org-directory))
   :bind
-  (:map org-mode-map
-        ("C-c e" . org-emphasize))
+  (("C-c l" . org-store-link)
+   ("C-c a" . org-agenda)
+   ("C-c c" . org-capture)
+   :map org-mode-map
+   ("C-c e" . org-emphasize))
+  :hook
+  ;; Visually indent content according to its heading level.
+  (org-mode . org-indent-mode)
   :custom
   ;; Record a timestamp when a TODO item is marked as DONE.
   (org-log-done t)
@@ -189,8 +200,8 @@
   (org-hide-emphasis-markers t)
   ;; Display descriptive links instead of complete link syntax.
   (org-link-descriptive t)
-  ;; Search these directories for agenda files.
-  (org-agenda-files '("~/Documents/org/"))
+  ;; Search the Org directory for agenda files.
+  (org-agenda-files (list org-directory))
   ;; Refile entries to headings up to level 3 in agenda files.
   (org-refile-targets '((org-agenda-files :maxlevel . 3)))
   ;; Display refile targets as file-based outline paths.
@@ -198,9 +209,6 @@
   (org-outline-path-complete-in-steps nil)
   ;; Display Org entities such as \alpha as symbols.
   ;; (org-pretty-entities t)
-  :hook
-  ;; Visually indent content according to its heading level.
-  (org-mode . org-indent-mode)
   :config
   ;; Enable Calc source blocks in Org Babel.
   (org-babel-do-load-languages

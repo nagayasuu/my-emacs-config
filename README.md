@@ -22,4 +22,7 @@ git clone git@github.com:nagayasuu/my-emacs-config.git ~/.emacs.d
 | --- | --- | --- |
 | `C-tab` | `consult-buffer` | Switch between buffers and recent files. |
 | `C-c r` | `consult-ripgrep` | Select a directory and search its contents with ripgrep. |
+| `C-c l` | `org-store-link` | Store a link to the current location. |
+| `C-c a` | `org-agenda` | Open the Org agenda dispatcher. |
+| `C-c c` | `org-capture` | Capture a new entry using an Org capture template. |
 | `C-c e` | `org-emphasize` | Add emphasis to text in an Org buffer. |

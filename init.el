@@ -22,17 +22,20 @@
   ;; Use Japanese names for weekdays and months.
   (setq system-time-locale "Japanese_Japan.65001")
 
-  ;; Add MSYS2 UCRT64 tools to the executable search path.
-  (let ((msys2-bin "c:/msys64/ucrt64/bin"))
-    (add-to-list 'exec-path msys2-bin)
-    (setenv "PATH"
-            (concat msys2-bin path-separator (getenv "PATH"))))
+  ;; Add MSYS2 tools to the executable search path.
+  (let ((msys2-paths '("c:/msys64/ucrt64/bin"
+                       "c:/msys64/usr/bin")))
+    (dolist (dir (reverse msys2-paths))
+      (add-to-list 'exec-path dir)
+      (setenv "PATH"
+              (concat dir path-separator (getenv "PATH")))))
 
-  ;; Fix Japanese search terms passed to ripgrep on Japanese Windows.
-  (add-to-list
-   'process-coding-system-alist
-   '("[rR][gG]\\(?:\\.exe\\)?\\'"
-     . (utf-8-dos . cp932-dos))))
+  ;; Fix Japanese search terms passed to MSYS2 commands on Japanese Windows.
+  (dolist (entry '(("[rR][gG]\\(?:\\.exe\\)?\\'"
+                    . (utf-8-dos . cp932-dos))
+                   ("[fF][iI][nN][dD]\\(?:\\.exe\\)?\\'"
+                    . (utf-8-dos . cp932-dos))))
+    (add-to-list 'process-coding-system-alist entry)))
 
 ;;; Startup behavior
 
@@ -156,14 +159,25 @@
 ;; Provide enhanced navigation and selection commands.
 (use-package consult
   :ensure t
+  :custom
+  (consult-async-min-input 2)
+
   :preface
   (defun my-consult-ripgrep-select-directory ()
     "Run `consult-ripgrep' and prompt for the search directory."
     (interactive)
     (let ((current-prefix-arg '(4)))
       (call-interactively #'consult-ripgrep)))
+
+  (defun my-consult-find-select-directory ()
+    "Run `consult-find' and prompt for the search directory."
+    (interactive)
+    (let ((current-prefix-arg '(4)))
+      (call-interactively #'consult-find)))
+
   :bind
   (("<C-tab>" . consult-buffer)
+   ("C-c f" . my-consult-find-select-directory)
    ("C-c r" . my-consult-ripgrep-select-directory)))
 
 ;;; In-buffer completion

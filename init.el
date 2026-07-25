@@ -110,6 +110,8 @@
 
 ;;; Minibuffer completion
 
+;;;; Completion UI
+
 ;; Display minibuffer completion candidates vertically.
 (use-package vertico
   :ensure t
@@ -132,15 +134,17 @@
   :init
   (marginalia-mode 1))
 
-(defun my-consult-ripgrep-select-directory ()
-  "Run `consult-ripgrep' and prompt for the search directory."
-  (interactive)
-  (let ((current-prefix-arg '(4)))
-    (call-interactively #'consult-ripgrep)))
+;;;; Navigation and search
 
 ;; Provide enhanced navigation and selection commands.
 (use-package consult
   :ensure t
+  :preface
+  (defun my-consult-ripgrep-select-directory ()
+    "Run `consult-ripgrep' and prompt for the search directory."
+    (interactive)
+    (let ((current-prefix-arg '(4)))
+      (call-interactively #'consult-ripgrep)))
   :bind
   (("<C-tab>" . consult-buffer)
    ("C-c r" . my-consult-ripgrep-select-directory)))
@@ -178,12 +182,9 @@
 
 ;;; Org mode
 
+;;;; Core
+
 (use-package org
-  :init
-  ;; Keep all Org data under a single directory.
-  (setq org-directory (expand-file-name "~/Documents/org/")
-        org-default-notes-file
-        (expand-file-name "inbox.org" org-directory))
   :bind
   (("C-c l" . org-store-link)
    ("C-c a" . org-agenda)
@@ -193,6 +194,11 @@
   :hook
   ;; Visually indent content according to its heading level.
   (org-mode . org-indent-mode)
+  :init
+  ;; Keep all Org data under a single directory.
+  (setq org-directory (expand-file-name "~/Documents/org/")
+        org-default-notes-file
+        (expand-file-name "inbox.org" org-directory))
   :custom
   ;; Record a timestamp when a TODO item is marked as DONE.
   (org-log-done t)
@@ -215,6 +221,8 @@
    'org-babel-load-languages
    '((calc . t))))
 
+;;;; Display
+
 ;; Reveal hidden Org markup around the element at point.
 (use-package org-appear
   :ensure t
@@ -229,6 +237,23 @@
   ;; (org-appear-autosubmarkers t)
   ;; Reveal Org entity source text.
   (org-appear-autoentities t))
+
+;;;; Journal
+
+;; Maintain date-based journal entries under the Org directory.
+(use-package org-journal
+  :ensure t
+  :defer t
+  :bind ("C-c j" . org-journal-new-entry)
+  :custom
+  (org-journal-dir (expand-file-name "journal/" org-directory))
+  (org-journal-file-type 'weekly)
+  (org-journal-file-format "%G-w%V.org")
+  (org-journal-date-format "%Y-%m-%d (%a)")
+  (org-journal-time-format "")
+  (org-journal-enable-agenda-integration t))
+
+;;;; Calc
 
 ;; Display floating-point Calc results in fixed-point notation.
 (use-package calc

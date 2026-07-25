@@ -101,6 +101,13 @@
 ;; Uncomment the following line to display trailing whitespace.
 ;; (setq-default show-trailing-whitespace t)
 
+;; Provide context-aware commands for copying and marking text.
+(use-package easy-kill
+  :ensure t
+  :bind
+  (([remap kill-ring-save] . easy-kill)
+   ([remap mark-sexp] . easy-mark)))
+
 ;; Disable backup and auto-save files.
 ;; Disabling auto-save also disables crash recovery through auto-save data.
 (setq make-backup-files nil

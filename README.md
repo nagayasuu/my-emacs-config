@@ -25,6 +25,7 @@ The following external Emacs packages are installed automatically by
 | --- | --- |
 | [`ef-themes`](https://github.com/protesilaos/ef-themes) | Provides the Ef Light color theme. |
 | [`simple-modeline`](https://github.com/gexplorer/simple-modeline) | Provides a minimal mode line. |
+| [`easy-kill`](https://github.com/leoliu/easy-kill) | Provides context-aware commands for copying and marking text. |
 | [`vertico`](https://github.com/minad/vertico) | Displays minibuffer completion candidates vertically. |
 | [`orderless`](https://github.com/oantolin/orderless) | Enables order-independent completion matching. |
 | [`marginalia`](https://github.com/minad/marginalia) | Adds contextual annotations to completion candidates. |

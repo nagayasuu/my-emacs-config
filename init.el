@@ -98,9 +98,6 @@
 ;; Remove trailing whitespace whenever a buffer is saved.
 (add-hook 'before-save-hook #'delete-trailing-whitespace)
 
-;; Uncomment the following line to display trailing whitespace.
-;; (setq-default show-trailing-whitespace t)
-
 ;; Provide context-aware commands for copying and marking text.
 (use-package easy-kill
   :ensure t
@@ -230,8 +227,6 @@
   ;; Display refile targets as file-based outline paths.
   (org-refile-use-outline-path 'file)
   (org-outline-path-complete-in-steps nil)
-  ;; Display Org entities such as \alpha as symbols.
-  ;; (org-pretty-entities t)
   :config
   ;; Enable Calc source blocks in Org Babel.
   (org-babel-do-load-languages
@@ -250,8 +245,6 @@
   (org-appear-autoemphasis t)
   ;; Reveal complete link syntax.
   (org-appear-autolinks t)
-  ;; Reveal subscript and superscript markers.
-  ;; (org-appear-autosubmarkers t)
   ;; Reveal Org entity source text.
   (org-appear-autoentities t))
 

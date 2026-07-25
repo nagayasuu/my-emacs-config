@@ -16,6 +16,24 @@ Run the following command to clone the configuration files into `~/.emacs.d`:
 git clone git@github.com:nagayasuu/my-emacs-config.git ~/.emacs.d
 ```
 
+## External packages
+
+The following external Emacs packages are installed automatically by
+`use-package`:
+
+| Package | Purpose |
+| --- | --- |
+| [`ef-themes`](https://github.com/protesilaos/ef-themes) | Provides the Ef Light color theme. |
+| [`simple-modeline`](https://github.com/gexplorer/simple-modeline) | Provides a minimal mode line. |
+| [`vertico`](https://github.com/minad/vertico) | Displays minibuffer completion candidates vertically. |
+| [`orderless`](https://github.com/oantolin/orderless) | Enables order-independent completion matching. |
+| [`marginalia`](https://github.com/minad/marginalia) | Adds contextual annotations to completion candidates. |
+| [`consult`](https://github.com/minad/consult) | Provides enhanced navigation and search commands. |
+| [`corfu`](https://github.com/minad/corfu) | Displays completion-at-point candidates in a popup. |
+| [`cape`](https://github.com/minad/cape) | Adds completion-at-point backends for words and file paths. |
+| [`org-appear`](https://github.com/awth13/org-appear) | Reveals hidden Org markup around the cursor. |
+| [`org-journal`](https://github.com/bastibe/org-journal) | Creates and manages journal entries in Org mode. |
+
 ## Additional key bindings
 
 | Key | Command | Description |
@@ -26,3 +44,4 @@ git clone git@github.com:nagayasuu/my-emacs-config.git ~/.emacs.d
 | `C-c a` | `org-agenda` | Open the Org agenda dispatcher. |
 | `C-c c` | `org-capture` | Capture a new entry using an Org capture template. |
 | `C-c e` | `org-emphasize` | Add emphasis to text in an Org buffer. |
+| `C-c j` | `org-journal-new-entry` | Create a new Org journal entry. |

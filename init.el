@@ -46,6 +46,9 @@
 ;; Display only the current buffer name in the frame title.
 (setq frame-title-format '("%b"))
 
+;; Disable the audible bell.
+(setq ring-bell-function #'ignore)
+
 ;;; Appearance
 
 ;; Set the font for the initial frame.
@@ -270,5 +273,13 @@
   :defer t
   :config
   (setq-default calc-float-format '(fix 20)))
+
+;;; Customize
+
+;; Keep settings written by Customize out of this file.
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+
+;; Load Customize settings when the file exists.
+(load custom-file 'noerror)
 
 ;;; init.el ends here

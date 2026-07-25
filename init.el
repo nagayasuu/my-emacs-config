@@ -71,6 +71,16 @@
   :ensure t
   :hook (after-init . simple-modeline-mode))
 
+;;; Scrolling
+
+;; Keep point at a consistent screen position while scrolling.
+(setq scroll-margin 0
+      scroll-conservatively 100000
+      scroll-preserve-screen-position t)
+
+;; Enable smooth pixel-based scrolling.
+(pixel-scroll-precision-mode 1)
+
 ;;; Editing behavior
 
 ;; Replace the active region when text is inserted.

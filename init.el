@@ -282,7 +282,8 @@
   (org-journal-date-format "%Y-%m-%d (%a)")
   (org-journal-time-format "")
   (org-journal-carryover-items "TODO=\"TODO\"")
-  (org-journal-enable-agenda-integration t))
+  (org-journal-enable-agenda-integration t)
+  (org-journal-file-header "#+startup: content\n"))
 
 ;;; Calculator
 

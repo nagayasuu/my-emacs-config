@@ -111,12 +111,12 @@
   (([remap kill-ring-save] . easy-kill)
    ([remap mark-sexp] . easy-mark)))
 
+;;; Files and session persistence
+
 ;; Disable backup and auto-save files.
 ;; Disabling auto-save also disables crash recovery through auto-save data.
 (setq make-backup-files nil
       auto-save-default nil)
-
-;;; History and session persistence
 
 ;; Preserve minibuffer history between Emacs sessions.
 (savehist-mode 1)
@@ -239,6 +239,8 @@
   (org-link-descriptive t)
   ;; Search the Org directory for agenda files.
   (org-agenda-files (list org-directory))
+  ;; Store archived entries under an archive subdirectory.
+  (org-archive-location "archive/%s_archive::")
   ;; Refile entries to headings up to level 3 in agenda files.
   (org-refile-targets '((org-agenda-files :maxlevel . 3)))
   ;; Display refile targets as file-based outline paths.
@@ -273,14 +275,16 @@
   :defer t
   :bind ("C-c j" . org-journal-new-entry)
   :custom
+  (org-element-use-cache nil)
   (org-journal-dir (expand-file-name "journal/" org-directory))
   (org-journal-file-type 'weekly)
-  (org-journal-file-format "%G-w%V.org")
+  (org-journal-file-format "%Y-%m-%d.org")
   (org-journal-date-format "%Y-%m-%d (%a)")
   (org-journal-time-format "")
+  (org-journal-carryover-items "TODO=\"TODO\"")
   (org-journal-enable-agenda-integration t))
 
-;;;; Calc
+;;; Calculator
 
 ;; Display floating-point Calc results in fixed-point notation.
 (use-package calc

@@ -10,6 +10,12 @@
              '("melpa-stable" . "https://stable.melpa.org/packages/")
              t)
 
+;; Add NonGNU Devel and pin gptel to that archive.
+(add-to-list 'package-archives
+             '("nongnu-devel" . "https://elpa.nongnu.org/nongnu-devel/"))
+(add-to-list 'package-pinned-packages
+             '(gptel . "nongnu-devel"))
+
 ;;; Platform integration
 
 (when (eq system-type 'windows-nt)
@@ -292,6 +298,16 @@
   :defer t
   :config
   (setq-default calc-float-format '(fix 20)))
+
+;;; AI assistance
+
+;; Use an OAuth-authenticated OpenAI backend with gptel.
+(use-package gptel
+  :ensure t
+  :config
+  (setq gptel-model 'gpt-5.4-mini
+        gptel-backend
+        (gptel-make-openai-oauth "OpenAI-sub")))
 
 ;;; Customize
 

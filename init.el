@@ -233,7 +233,7 @@
   (org-mode . org-indent-mode)
   :init
   ;; Keep all Org data under a single directory.
-  (setq org-directory (expand-file-name "~/Documents/org/")
+  (setq org-directory (expand-file-name "~/Dropbox/org/")
         org-default-notes-file
         (expand-file-name "inbox.org" org-directory))
   :custom
@@ -305,7 +305,7 @@
 (use-package gptel
   :ensure t
   :config
-  (setq gptel-model 'gpt-5.4-mini
+  (setq gptel-model 'gpt-5.6-sol
         gptel-backend
         (gptel-make-openai-oauth "OpenAI-sub")))
 

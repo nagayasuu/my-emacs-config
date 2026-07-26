@@ -34,6 +34,7 @@ The following external Emacs packages are installed automatically by
 | [`cape`](https://github.com/minad/cape) | Adds completion-at-point backends for words and file paths. |
 | [`org-appear`](https://github.com/awth13/org-appear) | Reveals hidden Org markup around the cursor. |
 | [`org-journal`](https://github.com/bastibe/org-journal) | Creates and manages journal entries in Org mode. |
+| [`gptel`](https://github.com/karthink/gptel) | Provides an Emacs client for interacting with large language models. |
 
 ## Additional key bindings
 

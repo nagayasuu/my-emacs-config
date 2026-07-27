@@ -302,12 +302,12 @@
 ;;; AI assistance
 
 ;; Use an OAuth-authenticated OpenAI backend with gptel.
-(use-package gptel
-  :ensure t
-  :config
-  (setq gptel-model 'gpt-5.6-sol
-        gptel-backend
-        (gptel-make-openai-oauth "OpenAI-sub")))
+;; (use-package gptel
+;;   :ensure t
+;;   :config
+;;   (setq gptel-model 'gpt-5.6-sol
+;;         gptel-backend
+;;         (gptel-make-openai-oauth "OpenAI-sub")))
 
 ;;; Customize
 

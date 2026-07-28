@@ -279,7 +279,13 @@
 (use-package org-journal
   :ensure t
   :defer t
-  :bind ("C-c j" . org-journal-new-entry)
+  :init
+  (define-prefix-command 'my-org-journal-map)
+  :bind
+  (("C-c j" . my-org-journal-map)
+   :map my-org-journal-map
+   ("j" . org-journal-new-entry)
+   ("o" . org-journal-open-current-journal-file))
   :custom
   (org-element-use-cache nil)
   (org-journal-dir (expand-file-name "journal/" org-directory))

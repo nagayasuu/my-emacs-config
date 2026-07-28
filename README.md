@@ -47,4 +47,5 @@ The following external Emacs packages are installed automatically by
 | `C-c a` | `org-agenda` | Open the Org agenda dispatcher. |
 | `C-c c` | `org-capture` | Capture a new entry using an Org capture template. |
 | `C-c e` | `org-emphasize` | Add emphasis to text in an Org buffer. |
-| `C-c j` | `org-journal-new-entry` | Create a new Org journal entry. |
+| `C-c j j` | `org-journal-new-entry` | Create a new Org journal entry. |
+| `C-c j o` | `org-journal-open-current-journal-file` | Open the current Org journal file. |

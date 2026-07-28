@@ -43,7 +43,9 @@
                     . (utf-8-dos . cp932-dos))))
     (add-to-list 'process-coding-system-alist entry)))
 
-;;; Startup behavior
+;;; Core Emacs
+
+;;;; Startup behavior
 
 ;; Skip the startup screen.
 (setq inhibit-startup-screen t)
@@ -58,7 +60,7 @@
 ;; Disable the audible bell.
 (setq ring-bell-function #'ignore)
 
-;;; Appearance
+;;;; Appearance
 
 ;; Set the font for the initial frame.
 (set-frame-font "PlemolJP-10")
@@ -83,7 +85,7 @@
   :ensure t
   :hook (after-init . simple-modeline-mode))
 
-;;; Scrolling
+;;;; Scrolling
 
 ;; Keep point at a consistent screen position while scrolling.
 (setq scroll-margin 0
@@ -93,7 +95,7 @@
 ;; Enable smooth pixel-based scrolling.
 (pixel-scroll-precision-mode 1)
 
-;;; Editing behavior
+;;;; Editing behavior
 
 ;; Replace the active region when text is inserted.
 (delete-selection-mode 1)
@@ -117,7 +119,7 @@
   (([remap kill-ring-save] . easy-kill)
    ([remap mark-sexp] . easy-mark)))
 
-;;; Files and session persistence
+;;;; Files and session persistence
 
 ;; Disable backup and auto-save files.
 ;; Disabling auto-save also disables crash recovery through auto-save data.
@@ -134,9 +136,9 @@
 ;; Restore buffers and the window layout from the previous session.
 (desktop-save-mode 1)
 
-;;; Minibuffer completion
+;;; Completion and navigation
 
-;;;; Completion UI
+;;;; Minibuffer completion
 
 ;; Display minibuffer completion candidates vertically.
 (use-package vertico
@@ -165,9 +167,6 @@
 ;; Provide enhanced navigation and selection commands.
 (use-package consult
   :ensure t
-  :custom
-  (consult-async-min-input 2)
-
   :preface
   (defun my-consult-ripgrep-select-directory ()
     "Run `consult-ripgrep' and prompt for the search directory."
@@ -181,25 +180,28 @@
     (let ((current-prefix-arg '(4)))
       (call-interactively #'consult-find)))
 
+  :custom
+  (consult-async-min-input 2)
+
   :bind
   (("<C-tab>" . consult-buffer)
    ("C-c f" . my-consult-find-select-directory)
    ("C-c r" . my-consult-ripgrep-select-directory)))
 
-;;; In-buffer completion
+;;;; In-buffer completion
 
 ;; Display completion-at-point candidates in a popup.
 (use-package corfu
   :ensure t
+  :init
+  (global-corfu-mode)
   :custom
   ;; Start completion automatically after two characters and a short delay.
   (corfu-auto t)
   (corfu-auto-delay 0.2)
   (corfu-auto-prefix 2)
   ;; Continue from the first candidate after reaching the last one.
-  (corfu-cycle t)
-  :init
-  (global-corfu-mode))
+  (corfu-cycle t))
 
 ;; Add additional completion-at-point backends.
 (use-package cape
@@ -210,7 +212,7 @@
   ;; Complete file-system paths.
   (add-hook 'completion-at-point-functions #'cape-file))
 
-;;; Command discovery
+;;;; Command discovery
 
 ;; Display available key continuations after a prefix key is pressed.
 (use-package which-key
@@ -222,20 +224,16 @@
 ;;;; Core
 
 (use-package org
-  :bind
-  (("C-c l" . org-store-link)
-   ("C-c a" . org-agenda)
-   ("C-c c" . org-capture)
-   :map org-mode-map
-   ("C-c e" . org-emphasize))
-  :hook
-  ;; Visually indent content according to its heading level.
-  (org-mode . org-indent-mode)
   :init
   ;; Keep all Org data under a single directory.
   (setq org-directory (expand-file-name "~/Dropbox/org/")
         org-default-notes-file
-        (expand-file-name "inbox.org" org-directory))
+        (expand-file-name "inbox.org" org-directory)
+        org-capture-templates
+        '(("t" "Task" entry
+           (file+headline org-default-notes-file "Tasks")
+           "* TODO %?\n%U\n%a\n"
+           :empty-lines 1)))
   :custom
   ;; Record a timestamp when a TODO item is marked as DONE.
   (org-log-done t)
@@ -252,6 +250,15 @@
   ;; Display refile targets as file-based outline paths.
   (org-refile-use-outline-path 'file)
   (org-outline-path-complete-in-steps nil)
+  :bind
+  (("C-c l" . org-store-link)
+   ("C-c a" . org-agenda)
+   ("C-c c" . org-capture)
+   :map org-mode-map
+   ("C-c e" . org-emphasize))
+  :hook
+  ;; Visually indent content according to its heading level.
+  (org-mode . org-indent-mode)
   :config
   ;; Enable Calc source blocks in Org Babel.
   (org-babel-do-load-languages
@@ -264,14 +271,14 @@
 (use-package org-appear
   :ensure t
   :after org
-  :hook (org-mode . org-appear-mode)
   :custom
   ;; Reveal emphasis markers.
   (org-appear-autoemphasis t)
   ;; Reveal complete link syntax.
   (org-appear-autolinks t)
   ;; Reveal Org entity source text.
-  (org-appear-autoentities t))
+  (org-appear-autoentities t)
+  :hook (org-mode . org-appear-mode))
 
 ;;;; Journal
 
@@ -281,11 +288,6 @@
   :defer t
   :init
   (define-prefix-command 'my-org-journal-map)
-  :bind
-  (("C-c j" . my-org-journal-map)
-   :map my-org-journal-map
-   ("j" . org-journal-new-entry)
-   ("o" . org-journal-open-current-journal-file))
   :custom
   (org-element-use-cache nil)
   (org-journal-dir (expand-file-name "journal/" org-directory))
@@ -295,9 +297,16 @@
   (org-journal-time-format "")
   (org-journal-carryover-items "TODO=\"TODO\"")
   (org-journal-enable-agenda-integration t)
-  (org-journal-file-header "#+startup: content\n"))
+  (org-journal-file-header "#+startup: content\n")
+  :bind
+  (("C-c j" . my-org-journal-map)
+   :map my-org-journal-map
+   ("j" . org-journal-new-entry)
+   ("o" . org-journal-open-current-journal-file)))
 
-;;; Calculator
+;;; Utilities
+
+;;;; Calculator
 
 ;; Display floating-point Calc results in fixed-point notation.
 (use-package calc
@@ -305,7 +314,7 @@
   :config
   (setq-default calc-float-format '(fix 20)))
 
-;;; AI assistance
+;;;; AI assistance
 
 ;; Use an OAuth-authenticated OpenAI backend with gptel.
 ;; (use-package gptel

@@ -232,7 +232,11 @@
         org-capture-templates
         '(("t" "Task" entry
            (file+headline org-default-notes-file "Tasks")
-           "* TODO %?\n%U\n%a\n"
+           "* TODO %?\n:PROPERTIES:\n:CREATED: %U\n:SOURCE_LINK: %a\n:END:\n"
+           :empty-lines 1)
+          ("n" "Note" entry
+           (file+headline org-default-notes-file "Notes")
+           "* %?\n:PROPERTIES:\n:CREATED: %U\n:SOURCE_LINK: %a\n:END:\n"
            :empty-lines 1)))
   :custom
   ;; Record a timestamp when a TODO item is marked as DONE.

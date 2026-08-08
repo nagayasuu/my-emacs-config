@@ -63,7 +63,7 @@
 ;;;; Appearance
 
 ;; Set the font for the initial frame.
-(set-frame-font "PlemolJP-10")
+(set-frame-font "UDEV Gothic JPDOC-11")
 
 ;; Hide interface elements for a cleaner layout.
 (menu-bar-mode -1)

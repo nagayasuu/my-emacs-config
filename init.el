@@ -265,12 +265,19 @@
    ("C-c e" . org-emphasize))
   :hook
   ;; Visually indent content according to its heading level.
-  (org-mode . org-indent-mode)
-  :config
-  ;; Enable Calc source blocks in Org Babel.
+  (org-mode . org-indent-mode))
+
+;;;; Source blocks
+
+;; Enable Calc source blocks in Org Babel.
+(with-eval-after-load 'org
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((calc . t))))
+
+;; Use 20 digits of internal precision for Calc source blocks.
+(with-eval-after-load 'calc
+  (setq-default calc-internal-prec 20))
 
 ;;;; Display
 
@@ -311,17 +318,7 @@
    ("j" . org-journal-new-entry)
    ("o" . org-journal-open-current-journal-file)))
 
-;;; Utilities
-
-;;;; Calculator
-
-;; Display floating-point Calc results in fixed-point notation.
-(use-package calc
-  :defer t
-  :config
-  (setq-default calc-float-format '(fix 20)))
-
-;;;; AI assistance
+;;; AI assistance
 
 ;; Use an OAuth-authenticated OpenAI backend with gptel.
 ;; (use-package gptel

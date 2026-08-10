@@ -63,12 +63,15 @@
 ;;;; Appearance
 
 ;; Set the font for the initial frame.
-(set-frame-font "UDEV Gothic JPDOC-11")
+(set-frame-font "UDEV Gothic JPDOC-12")
 
 ;; Hide interface elements for a cleaner layout.
 (menu-bar-mode -1)
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
+
+;; Show a tab line in every window.
+(global-tab-line-mode 1)
 
 ;; Use a blinking bar cursor.
 (setq-default cursor-type 'bar)

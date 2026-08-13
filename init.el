@@ -70,9 +70,6 @@
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
 
-;; Show a tab line in every window.
-(global-tab-line-mode 1)
-
 ;; Use a blinking bar cursor.
 (setq-default cursor-type 'bar)
 (blink-cursor-mode 1)
@@ -87,6 +84,29 @@
 (use-package simple-modeline
   :ensure t
   :hook (after-init . simple-modeline-mode))
+
+;;;; Tab line
+
+;; Show a tab line in every window without the new-tab button.
+(setq tab-line-new-button-show nil)
+(global-tab-line-mode 1)
+
+;; Customize the close button and tab-line faces after loading tab-line.
+(with-eval-after-load 'tab-line
+  (setq tab-line-close-button
+        (propertize " × "
+                    'face '(:foreground "#888888" :height 2)
+                    'keymap tab-line-tab-close-map
+                    'mouse-face 'tab-line-close-highlight
+                    'help-echo "Close tab"))
+  (set-face-attribute 'tab-line nil :height 1.2)
+  (set-face-attribute 'tab-line-tab nil :height 0.9)
+  (set-face-attribute 'tab-line-tab-current nil :height 0.9)
+  (set-face-attribute 'tab-line-tab-inactive nil :height 0.9)
+  (set-face-attribute 'tab-line-tab-special nil
+                      :height 0.9
+                      :slant 'normal
+                      :weight 'normal))
 
 ;;;; Scrolling
 

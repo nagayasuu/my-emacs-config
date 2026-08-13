@@ -193,6 +193,9 @@
 
 ;;;; In-buffer completion
 
+;; Keep the capitalization of dynamic abbreviations unchanged.
+(setq dabbrev-case-replace nil)
+
 ;; Display completion-at-point candidates in a popup.
 (use-package corfu
   :ensure t
@@ -269,15 +272,14 @@
 
 ;;;; Source blocks
 
-;; Enable Calc source blocks in Org Babel.
+;; Configure Calc-backed Org Babel source blocks.
 (with-eval-after-load 'org
   (org-babel-do-load-languages
    'org-babel-load-languages
-   '((calc . t))))
-
-;; Use 20 digits of internal precision for Calc source blocks.
-(with-eval-after-load 'calc
-  (setq-default calc-internal-prec 20))
+   '((calc . t)))
+  ;; Use 20 digits of internal precision for Calc source blocks.
+  (with-eval-after-load 'calc
+    (setq-default calc-internal-prec 20)))
 
 ;;;; Display
 

@@ -95,7 +95,7 @@
 (with-eval-after-load 'tab-line
   (setq tab-line-close-button
         (propertize " × "
-                    'face '(:foreground "#888888" :height 2)
+                    'face '(:foreground "#888888" :height 1.0)
                     'keymap tab-line-tab-close-map
                     'mouse-face 'tab-line-close-highlight
                     'help-echo "Close tab"))

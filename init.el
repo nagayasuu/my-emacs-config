@@ -5,9 +5,9 @@
 ;; Load Emacs' built-in package manager.
 (require 'package)
 
-;; Add MELPA Stable after the existing package archives.
+;; Add MELPA after the existing package archives.
 (add-to-list 'package-archives
-             '("melpa-stable" . "https://stable.melpa.org/packages/")
+             '("melpa" . "https://melpa.org/packages/")
              t)
 
 ;; Add NonGNU Devel and pin gptel to that archive.
@@ -62,7 +62,8 @@
 ;;;; Appearance
 
 ;; Set the font for the initial frame.
-(set-frame-font "UDEV Gothic JPDOC-12")
+;; (set-frame-font "UDEV Gothic JPDOC-15")
+(set-frame-font "PlemolJP-13")
 
 (menu-bar-mode -1)
 (scroll-bar-mode -1)
@@ -72,10 +73,18 @@
 (blink-cursor-mode 1)
 
 ;; Use the Ef Light theme.
-(use-package ef-themes
+;; (use-package ef-themes
+;;   :ensure t
+;;   :config
+;;   (load-theme 'ef-light t))
+
+(use-package catppuccin-theme
   :ensure t
+  :no-require t
+  :init
+  (setq catppuccin-flavor 'frappe)
   :config
-  (load-theme 'ef-light t))
+  (load-theme 'catppuccin :no-confirm))
 
 ;; Use a minimal mode line.
 (use-package simple-modeline

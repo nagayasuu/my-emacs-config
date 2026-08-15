@@ -16,6 +16,12 @@
 (add-to-list 'package-pinned-packages
              '(gptel . "nongnu-devel"))
 
+;;; Personal paths
+
+(defconst my-org-directory
+  (expand-file-name "~/Dropbox/org/")
+  "Root directory for Org files.")
+
 ;;; Platform integration
 
 (when (eq system-type 'windows-nt)
@@ -47,30 +53,21 @@
 
 ;;;; Startup behavior
 
-;; Skip the startup screen.
-(setq inhibit-startup-screen t)
-
-;; Open the *scratch* buffer in Org mode without an initial message.
-(setq initial-major-mode 'org-mode
-      initial-scratch-message nil)
-
-;; Display only the current buffer name in the frame title.
-(setq frame-title-format '("%b"))
-
-;; Disable the audible bell.
-(setq ring-bell-function #'ignore)
+(setq inhibit-startup-screen t
+      initial-major-mode 'org-mode
+      initial-scratch-message nil
+      frame-title-format '("%b")
+      ring-bell-function #'ignore)
 
 ;;;; Appearance
 
 ;; Set the font for the initial frame.
 (set-frame-font "UDEV Gothic JPDOC-12")
 
-;; Hide interface elements for a cleaner layout.
 (menu-bar-mode -1)
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
 
-;; Use a blinking bar cursor.
 (setq-default cursor-type 'bar)
 (blink-cursor-mode 1)
 
@@ -87,12 +84,12 @@
 
 ;;;; Tab line
 
-;; Show a tab line in every window without the new-tab button.
-(setq tab-line-new-button-show nil)
-(global-tab-line-mode 1)
-
-;; Customize the close button and tab-line faces after loading tab-line.
-(with-eval-after-load 'tab-line
+(use-package tab-line
+  :ensure nil
+  :init
+  (setq tab-line-new-button-show nil)
+  (global-tab-line-mode 1)
+  :config
   (setq tab-line-close-button
         (propertize " × "
                     'face '(:foreground "#888888" :height 1.0)
@@ -100,9 +97,10 @@
                     'mouse-face 'tab-line-close-highlight
                     'help-echo "Close tab"))
   (set-face-attribute 'tab-line nil :height 1.1)
-  (set-face-attribute 'tab-line-tab nil :height 0.9)
-  (set-face-attribute 'tab-line-tab-current nil :height 0.9)
-  (set-face-attribute 'tab-line-tab-inactive nil :height 0.9)
+  (dolist (face '(tab-line-tab
+                  tab-line-tab-current
+                  tab-line-tab-inactive))
+    (set-face-attribute face nil :height 0.9))
   (set-face-attribute 'tab-line-tab-special nil
                       :height 0.9
                       :slant 'normal
@@ -110,27 +108,19 @@
 
 ;;;; Scrolling
 
-;; Keep point at a consistent screen position while scrolling.
 (setq scroll-margin 0
       scroll-conservatively 100000
       scroll-preserve-screen-position t)
 
-;; Enable smooth pixel-based scrolling.
 (pixel-scroll-precision-mode 1)
 
 ;;;; Editing behavior
 
-;; Replace the active region when text is inserted.
 (delete-selection-mode 1)
-
-;; Automatically insert matching delimiters.
 (electric-pair-mode 1)
 
-;; Kill the newline when killing a complete line with C-k.
-(setq kill-whole-line t)
-
-;; Indent with TAB when possible; otherwise invoke completion.
-(setq tab-always-indent 'complete)
+(setq kill-whole-line t
+      tab-always-indent 'complete)
 
 ;; Remove trailing whitespace whenever a buffer is saved.
 (add-hook 'before-save-hook #'delete-trailing-whitespace)
@@ -144,19 +134,15 @@
 
 ;;;; Files and session persistence
 
-;; Disable backup and auto-save files.
-;; Disabling auto-save also disables crash recovery through auto-save data.
+;; Disabling auto-save also disables its crash-recovery data.
 (setq make-backup-files nil
       auto-save-default nil)
 
-;; Preserve minibuffer history between Emacs sessions.
 (savehist-mode 1)
 
-;; Track up to 200 recently opened files.
 (setq recentf-max-saved-items 200)
 (recentf-mode 1)
 
-;; Restore buffers and the window layout from the previous session.
 (desktop-save-mode 1)
 
 ;;; Completion and navigation
@@ -191,17 +177,21 @@
 (use-package consult
   :ensure t
   :preface
+  (defun my-consult--select-directory (command)
+    "Run COMMAND from `my-org-directory' and prompt for a directory."
+    (let ((default-directory my-org-directory)
+          (current-prefix-arg '(4)))
+      (call-interactively command)))
+
   (defun my-consult-ripgrep-select-directory ()
     "Run `consult-ripgrep' and prompt for the search directory."
     (interactive)
-    (let ((current-prefix-arg '(4)))
-      (call-interactively #'consult-ripgrep)))
+    (my-consult--select-directory #'consult-ripgrep))
 
   (defun my-consult-find-select-directory ()
     "Run `consult-find' and prompt for the search directory."
     (interactive)
-    (let ((current-prefix-arg '(4)))
-      (call-interactively #'consult-find)))
+    (my-consult--select-directory #'consult-find))
 
   :custom
   (consult-async-min-input 2)
@@ -270,8 +260,7 @@
        (org-agenda-files))))
 
   :init
-  ;; Keep all Org data under a single directory.
-  (setq org-directory (expand-file-name "~/Dropbox/org/")
+  (setq org-directory my-org-directory
         org-default-notes-file
         (expand-file-name "inbox.org" org-directory)
         org-capture-templates
@@ -287,6 +276,7 @@
   :custom
   ;; Workflow and storage.
   (org-log-done t)
+  (org-element-use-cache nil)
   (org-agenda-files (list org-directory))
   (org-archive-location "archive/%s_archive::")
 
@@ -308,12 +298,9 @@
 
   :hook
   ;; Visually indent content according to its heading level.
-  (org-mode . org-indent-mode))
+  (org-mode . org-indent-mode)
 
-;;;; Source blocks
-
-;; Configure Calc-backed Org Babel source blocks.
-(with-eval-after-load 'org
+  :config
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((calc . t)))
@@ -345,7 +332,6 @@
   :init
   (define-prefix-command 'my-org-journal-map)
   :custom
-  (org-element-use-cache nil)
   (org-journal-dir (expand-file-name "journal/" org-directory))
   (org-journal-file-type 'weekly)
   (org-journal-file-format "%Y-%m-%d.org")

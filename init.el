@@ -250,6 +250,25 @@
 ;;;; Core
 
 (use-package org
+  :preface
+  (defconst my-org-refile-excluded-directories
+    '("archive/" "journal/")
+    "Directories under `org-directory' excluded from refile targets.")
+
+  (defun my-org-refile-files ()
+    "Return agenda files that can be used as refile targets."
+    (let ((excluded-directories
+           (mapcar (lambda (directory)
+                     (expand-file-name directory org-directory))
+                   my-org-refile-excluded-directories)))
+      (seq-remove
+       (lambda (file)
+         (seq-some
+          (lambda (directory)
+            (file-in-directory-p (expand-file-name file) directory))
+          excluded-directories))
+       (org-agenda-files))))
+
   :init
   ;; Keep all Org data under a single directory.
   (setq org-directory (expand-file-name "~/Dropbox/org/")
@@ -264,28 +283,29 @@
            (file+headline org-default-notes-file "Notes")
            "* %?\n"
            :empty-lines 1)))
+
   :custom
-  ;; Record a timestamp when a TODO item is marked as DONE.
+  ;; Workflow and storage.
   (org-log-done t)
-  ;; Hide emphasis markers such as *, /, =, and ~.
-  (org-hide-emphasis-markers t)
-  ;; Display descriptive links instead of complete link syntax.
-  (org-link-descriptive t)
-  ;; Search the Org directory for agenda files.
   (org-agenda-files (list org-directory))
-  ;; Store archived entries under an archive subdirectory.
   (org-archive-location "archive/%s_archive::")
-  ;; Refile entries to headings up to level 3 in agenda files.
-  (org-refile-targets '((org-agenda-files :maxlevel . 3)))
-  ;; Display refile targets as file-based outline paths.
-  (org-refile-use-outline-path 'file)
+
+  ;; Refile to level 1 headings outside the excluded directories.
+  (org-refile-targets '((my-org-refile-files :level . 1)))
+  (org-refile-use-outline-path t)
   (org-outline-path-complete-in-steps nil)
+
+  ;; Display descriptive links and hide emphasis markers such as *, /, =, and ~.
+  (org-link-descriptive t)
+  (org-hide-emphasis-markers t)
+
   :bind
   (("C-c l" . org-store-link)
    ("C-c a" . org-agenda)
    ("C-c c" . org-capture)
    :map org-mode-map
    ("C-c e" . org-emphasize))
+
   :hook
   ;; Visually indent content according to its heading level.
   (org-mode . org-indent-mode))

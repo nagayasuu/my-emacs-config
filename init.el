@@ -99,7 +99,7 @@
                     'keymap tab-line-tab-close-map
                     'mouse-face 'tab-line-close-highlight
                     'help-echo "Close tab"))
-  (set-face-attribute 'tab-line nil :height 1.2)
+  (set-face-attribute 'tab-line nil :height 1.1)
   (set-face-attribute 'tab-line-tab nil :height 0.9)
   (set-face-attribute 'tab-line-tab-current nil :height 0.9)
   (set-face-attribute 'tab-line-tab-inactive nil :height 0.9)

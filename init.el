@@ -93,17 +93,41 @@
 
 ;;;; Tab line
 
+(defun my-tab-line-tab-name-format (tab tabs)
+  "Format TAB and restore the close button's hover face."
+  (let* ((text (tab-line-tab-name-format-default tab tabs))
+         (close-start 0))
+    (while (and (< close-start (length text))
+                (not (equal (get-text-property close-start 'help-echo text)
+                            "Close tab")))
+      (setq close-start
+            (next-single-property-change
+             close-start 'help-echo text (length text))))
+    (when (< close-start (length text))
+      (add-text-properties
+       close-start
+       (next-single-property-change close-start 'help-echo text (length text))
+       '(mouse-face (:inherit tab-line-highlight
+                     :foreground "#e78284"))
+       text))
+    text))
+
 (use-package tab-line
   :ensure nil
   :init
-  (setq tab-line-new-button-show nil)
+  (setq tab-line-new-button-show nil
+        tab-line-tab-name-function
+        (lambda (buffer &optional _buffers)
+          (concat " " (buffer-name buffer) " ")))
   (global-tab-line-mode 1)
   :config
-  (setq tab-line-close-button
-        (propertize " × "
+  (setq tab-line-tab-name-format-function #'my-tab-line-tab-name-format
+        tab-line-close-button
+        (propertize "×"
                     'face '(:foreground "#888888" :height 1.0)
                     'keymap tab-line-tab-close-map
-                    'mouse-face 'tab-line-close-highlight
+                    'mouse-face '(:inherit tab-line-highlight
+                                  :foreground "#e78284")
                     'help-echo "Close tab"))
   (set-face-attribute 'tab-line-tab-special nil
                       :slant 'normal

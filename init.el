@@ -81,8 +81,27 @@
 (use-package catppuccin-theme
   :ensure t
   :no-require t
+  :preface
+  (defun my-catppuccin-tab-line-faces (theme)
+    "Set contrasting tab-line faces when THEME is Catppuccin."
+    (when (eq theme 'catppuccin)
+      (custom-theme-set-faces
+       'catppuccin
+       `(tab-line-tab
+         ((t (:inherit tab-line
+              :foreground ,(catppuccin-color 'text)))))
+       `(tab-line-tab-current
+         ((t (:inherit tab-line-tab))))
+       `(tab-line-tab-inactive
+         ((t (:foreground ,(catppuccin-color 'subtext0)
+              :background ,(catppuccin-color 'surface0))))))
+      (dolist (face '(tab-line-tab
+                      tab-line-tab-current
+                      tab-line-tab-inactive))
+        (custom-theme-recalc-face face))))
   :init
   (setq catppuccin-flavor 'frappe)
+  (add-hook 'enable-theme-functions #'my-catppuccin-tab-line-faces)
   :config
   (load-theme 'catppuccin :no-confirm))
 
@@ -94,9 +113,13 @@
 ;;;; Tab line
 
 (defun my-tab-line-tab-name-format (tab tabs)
-  "Format TAB and restore the close button's hover face."
+  "Format TAB without changing its background on hover."
   (let* ((text (tab-line-tab-name-format-default tab tabs))
+         (tab-face (get-text-property 0 'face text))
          (close-start 0))
+    ;; The default formatter uses `tab-line-highlight' as the mouse face,
+    ;; which replaces the tab's own background while the pointer is over it.
+    (put-text-property 0 (length text) 'mouse-face tab-face text)
     (while (and (< close-start (length text))
                 (not (equal (get-text-property close-start 'help-echo text)
                             "Close tab")))
@@ -107,8 +130,7 @@
       (add-text-properties
        close-start
        (next-single-property-change close-start 'help-echo text (length text))
-       '(mouse-face (:inherit tab-line-highlight
-                     :foreground "#e78284"))
+       `(mouse-face ((:foreground "#e78284") ,tab-face))
        text))
     text))
 

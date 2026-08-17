@@ -82,6 +82,9 @@
   :ensure t
   :no-require t
   :preface
+  (defconst my-tab-line-vertical-padding 2
+    "Vertical padding around tab-line labels, in pixels.")
+
   (defun my-catppuccin-tab-line-faces (theme)
     "Set contrasting tab-line faces when THEME is Catppuccin."
     (when (eq theme 'catppuccin)
@@ -89,12 +92,16 @@
        'catppuccin
        `(tab-line-tab
          ((t (:inherit tab-line
-              :foreground ,(catppuccin-color 'text)))))
+              :foreground ,(catppuccin-color 'text)
+              :box (:line-width (-1 . ,my-tab-line-vertical-padding)
+                    :color ,(catppuccin-color 'base))))))
        `(tab-line-tab-current
          ((t (:inherit tab-line-tab))))
        `(tab-line-tab-inactive
          ((t (:foreground ,(catppuccin-color 'subtext0)
-              :background ,(catppuccin-color 'surface0))))))
+              :background ,(catppuccin-color 'surface0)
+              :box (:line-width (-1 . ,my-tab-line-vertical-padding)
+                    :color ,(catppuccin-color 'surface0)))))))
       (dolist (face '(tab-line-tab
                       tab-line-tab-current
                       tab-line-tab-inactive))

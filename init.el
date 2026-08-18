@@ -163,6 +163,13 @@
                       :slant 'normal
                       :weight 'normal))
 
+;; Add a thin spacer below the tab line.
+(setq-default header-line-format " ")
+(set-face-attribute 'header-line nil
+                    :inherit 'default
+                    :height 0.1
+                    :box nil)
+
 ;;;; Scrolling
 
 (setq scroll-margin 0

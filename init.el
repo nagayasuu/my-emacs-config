@@ -145,6 +145,7 @@
   :ensure nil
   :init
   (setq tab-line-new-button-show nil
+        tab-line-separator ""
         tab-line-tab-name-function
         (lambda (buffer &optional _buffers)
           (concat " " (buffer-name buffer) " ")))

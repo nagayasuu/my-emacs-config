@@ -31,7 +31,7 @@
 
 ;;;; Appearance
 
-(defconst my-default-font "PlemolJP-14"
+(defconst my-default-font "UDEV Gothic JPDOC-15"
   "Font used in graphical frames.")
 
 (defconst my-tab-line-vertical-padding 2
@@ -433,7 +433,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
   :bind
   (("<C-tab>" . consult-buffer)
    ("C-c f" . my-consult-find-select-directory)
-   ("C-c r" . my-consult-ripgrep-select-directory)))
+   ("C-c g" . my-consult-ripgrep-select-directory)))
 
 ;;;; In-buffer completion
 

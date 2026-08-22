@@ -151,9 +151,21 @@
 
 ;;;; Tab line
 
+(use-package nerd-icons
+  :ensure t)
+
 (defun my-tab-line-tab-name (buffer &optional _buffers)
-  "Return BUFFER's name padded for display in the tab line."
-  (format " %s " (buffer-name buffer)))
+  "Return BUFFER's name with a file icon and display padding."
+  (let* ((file (buffer-file-name buffer))
+         (icon (when file
+                 (copy-sequence (nerd-icons-icon-for-file file)))))
+    (when icon
+      ;; Save the icon face because the default tab formatter replaces it.
+      (put-text-property 0 (length icon)
+                         'my-tab-line-icon-face
+                         (get-text-property 0 'face icon)
+                         icon))
+    (concat " " icon (and icon " ") (buffer-name buffer) " ")))
 
 (defun my-tab-line-tab-name-format (tab tabs)
   "Format TAB among TABS without changing its background on hover."
@@ -163,6 +175,20 @@
     ;; The default formatter uses `tab-line-highlight' as the mouse face,
     ;; which replaces the tab's own background while the pointer is over it.
     (put-text-property 0 (length text) 'mouse-face tab-face text)
+    ;; Restore the Nerd Font family and color while inheriting the tab face.
+    (when-let* ((icon-start
+                 (text-property-not-all 0 (length text)
+                                        'my-tab-line-icon-face nil text))
+                (icon-face
+                 (get-text-property icon-start
+                                    'my-tab-line-icon-face text)))
+      (let ((icon-end
+             (next-single-property-change
+              icon-start 'my-tab-line-icon-face text (length text))))
+        (add-face-text-property icon-start icon-end icon-face nil text)
+        (put-text-property icon-start icon-end 'mouse-face
+                           (get-text-property icon-start 'face text)
+                           text)))
     (while (and (< close-start (length text))
                 (not (equal (get-text-property close-start 'help-echo text)
                             "Close tab")))

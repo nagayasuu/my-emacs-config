@@ -1,5 +1,11 @@
 ;;; init.el --- Personal Emacs configuration -*- lexical-binding: t; -*-
 
+;;; Commentary:
+
+;; Personal Emacs configuration shared across supported platforms.
+
+;;; Code:
+
 ;;; Package management
 
 ;; Load Emacs' built-in package manager.
@@ -16,13 +22,37 @@
 (add-to-list 'package-pinned-packages
              '(gptel . "nongnu-devel"))
 
-;;; Personal paths
+;;; Personal settings
 
 (defconst my-org-directory
   (expand-file-name "~/Dropbox/org/")
   "Root directory for Org files.")
 
+(defconst my-default-font "PlemolJP-13"
+  "Font used in graphical frames.")
+
+(defconst my-windows-exec-paths
+  '("c:/msys64/ucrt64/bin"
+    "c:/msys64/usr/bin")
+  "Directories prepended to the variable `exec-path' on Windows.")
+
+(defconst my-org-refile-excluded-directories
+  '("archive/" "journal/")
+  "Directories under `org-directory' excluded from refile targets.")
+
 ;;; Platform integration
+
+(defun my-prepend-to-exec-path (directory)
+  "Prepend DIRECTORY to variable `exec-path' and the PATH environment variable."
+  (add-to-list 'exec-path directory)
+  (let ((path-directories
+         (delete directory
+                 (split-string (or (getenv "PATH") "")
+                               path-separator t))))
+    (setenv "PATH"
+            (mapconcat #'identity
+                       (cons directory path-directories)
+                       path-separator))))
 
 (when (eq system-type 'windows-nt)
   ;; Use UTF-8 as the default coding system on Windows.
@@ -34,13 +64,9 @@
   ;; Use Japanese names for weekdays and months.
   (setq system-time-locale "Japanese_Japan.65001")
 
-  ;; Add MSYS2 tools to the executable search path.
-  (let ((msys2-paths '("c:/msys64/ucrt64/bin"
-                       "c:/msys64/usr/bin")))
-    (dolist (dir (reverse msys2-paths))
-      (add-to-list 'exec-path dir)
-      (setenv "PATH"
-              (concat dir path-separator (getenv "PATH")))))
+  ;; Add MSYS2 tools to the executable search path, in the declared order.
+  (dolist (directory (reverse my-windows-exec-paths))
+    (my-prepend-to-exec-path directory))
 
   ;; Fix Japanese search terms passed to MSYS2 commands on Japanese Windows.
   (dolist (entry '(("[rR][gG]\\(?:\\.exe\\)?\\'"
@@ -61,9 +87,15 @@
 
 ;;;; Appearance
 
-;; Set the font for the initial frame.
-;; (set-frame-font "UDEV Gothic JPDOC-15")
-(set-frame-font "PlemolJP-13")
+(defun my-apply-default-font (&optional frame)
+  "Apply `my-default-font' to graphical FRAME."
+  (with-selected-frame (or frame (selected-frame))
+    (when (display-graphic-p)
+      (set-frame-font my-default-font))))
+
+;; Cover both a regular startup frame and frames created by the daemon.
+(my-apply-default-font)
+(add-hook 'after-make-frame-functions #'my-apply-default-font)
 
 (menu-bar-mode -1)
 (scroll-bar-mode -1)
@@ -119,8 +151,12 @@
 
 ;;;; Tab line
 
+(defun my-tab-line-tab-name (buffer &optional _buffers)
+  "Return BUFFER's name padded for display in the tab line."
+  (format " %s " (buffer-name buffer)))
+
 (defun my-tab-line-tab-name-format (tab tabs)
-  "Format TAB without changing its background on hover."
+  "Format TAB among TABS without changing its background on hover."
   (let* ((text (tab-line-tab-name-format-default tab tabs))
          (tab-face (get-text-property 0 'face text))
          (close-start 0))
@@ -146,9 +182,7 @@
   :init
   (setq tab-line-new-button-show nil
         tab-line-separator ""
-        tab-line-tab-name-function
-        (lambda (buffer &optional _buffers)
-          (concat " " (buffer-name buffer) " ")))
+        tab-line-tab-name-function #'my-tab-line-tab-name)
   (global-tab-line-mode 1)
   :config
   (setq tab-line-tab-name-format-function #'my-tab-line-tab-name-format
@@ -162,13 +196,6 @@
   (set-face-attribute 'tab-line-tab-special nil
                       :slant 'normal
                       :weight 'normal))
-
-;; Add a thin spacer below the tab line.
-;; (setq-default header-line-format " ")
-;; (set-face-attribute 'header-line nil
-;;                     :inherit 'default
-;;                     :height 0.1
-;;                     :box nil)
 
 ;;;; Scrolling
 
@@ -305,10 +332,6 @@
 
 (use-package org
   :preface
-  (defconst my-org-refile-excluded-directories
-    '("archive/" "journal/")
-    "Directories under `org-directory' excluded from refile targets.")
-
   (defun my-org-refile-files ()
     "Return agenda files that can be used as refile targets."
     (let ((excluded-directories
@@ -377,6 +400,9 @@
   ;; Display descriptive links and hide emphasis markers such as *, /, =, and ~.
   (org-link-descriptive t)
   (org-hide-emphasis-markers t)
+
+  ;; Include plain lists in subtree visibility cycling.
+  (org-cycle-include-plain-lists 'integrate)
 
   :bind
   (("C-c l" . org-store-link)

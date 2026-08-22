@@ -26,7 +26,7 @@
 
 ;;;; Appearance
 
-(defconst my-default-font "PlemolJP-13"
+(defconst my-default-font "PlemolJP-14"
   "Font used in graphical frames.")
 
 (defconst my-tab-line-vertical-padding 2

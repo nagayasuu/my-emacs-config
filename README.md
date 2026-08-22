@@ -27,6 +27,7 @@ The following external Emacs packages are installed automatically by
 | [`simple-modeline`](https://github.com/gexplorer/simple-modeline) | Provides a minimal mode line. |
 | [`nerd-icons`](https://github.com/rainstormstudio/nerd-icons.el) | Adds file-type icons to tab-line tabs. |
 | [`easy-kill`](https://github.com/leoliu/easy-kill) | Provides context-aware commands for copying and marking text. |
+| [`mini-frame`](https://github.com/muffinmad/emacs-mini-frame) | Displays the minibuffer in a child frame. |
 | [`vertico`](https://github.com/minad/vertico) | Displays minibuffer completion candidates vertically. |
 | [`orderless`](https://github.com/oantolin/orderless) | Enables order-independent completion matching. |
 | [`marginalia`](https://github.com/minad/marginalia) | Adds contextual annotations to completion candidates. |

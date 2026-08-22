@@ -470,8 +470,40 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 (use-package org
   :defines org-capture-templates
-  :functions (org-agenda-files org-get-next-sibling)
+  :functions (org-agenda-files
+              org-cycle-internal-local
+              org-get-next-sibling
+              org-list-get-checkbox
+              org-list-get-item-end
+              org-list-get-item-end-before-blank)
   :preface
+  (defvar my-org--cycling-checkbox-trailing-blank-lines nil
+    "Non-nil while checkbox items are cycled with trailing blank lines.")
+
+  (defun my-org--include-checkbox-trailing-blank-lines
+      (original-function item structure)
+    "Extend checkbox ITEM's cycle endpoint using STRUCTURE.
+Call ORIGINAL-FUNCTION for non-checkbox items or outside visibility cycling."
+    (if (and my-org--cycling-checkbox-trailing-blank-lines
+             (org-list-get-checkbox item structure))
+        (let ((item-end (org-list-get-item-end item structure)))
+          (save-excursion
+            (goto-char item-end)
+            (while (and (not (eobp))
+                        (looking-at-p "[ \t]*$"))
+              (forward-line 1))
+            ;; Keep the final newline visible so following text stays on its
+            ;; own display line.  At end of buffer no separator is needed.
+            (if (eobp) (point) (1- (point)))))
+      (funcall original-function item structure)))
+
+  (defun my-org--cycle-checkbox-trailing-blank-lines
+      (original-function &rest arguments)
+    "Call ORIGINAL-FUNCTION with trailing checkbox blank lines included.
+Pass ARGUMENTS to ORIGINAL-FUNCTION."
+    (let ((my-org--cycling-checkbox-trailing-blank-lines t))
+      (apply original-function arguments)))
+
   (defun my-org-journal-directory ()
     "Return the journal directory under `org-directory'."
     (expand-file-name "journal/" org-directory))
@@ -559,6 +591,13 @@ FORCE is the optional second argument of `make-frame-invisible'."
   (org-mode . org-indent-mode)
 
   :config
+  ;; Unlike headings, Org normally leaves the blank lines at the end of a
+  ;; folded list item visible.  Include them when cycling checkbox items.
+  (advice-add 'org-list-get-item-end-before-blank :around
+              #'my-org--include-checkbox-trailing-blank-lines)
+  (advice-add 'org-cycle-internal-local :around
+              #'my-org--cycle-checkbox-trailing-blank-lines)
+
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((calc . t)))

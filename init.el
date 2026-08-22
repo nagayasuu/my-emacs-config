@@ -24,17 +24,32 @@
 
 ;;; Personal settings
 
-(defconst my-org-directory
-  (expand-file-name "~/Dropbox/org/")
-  "Root directory for Org files.")
+;;;; Appearance
 
 (defconst my-default-font "PlemolJP-13"
   "Font used in graphical frames.")
+
+(defconst my-tab-line-vertical-padding 2
+  "Vertical padding around tab-line labels, in pixels.")
+
+(defconst my-tab-line-close-hover-color "#e78284"
+  "Foreground color of the tab-line close button on hover.")
+
+(defconst my-tab-line-close-help-echo "Close tab"
+  "Help text used to identify the tab-line close button.")
+
+;;;; Windows
 
 (defconst my-windows-exec-paths
   '("c:/msys64/ucrt64/bin"
     "c:/msys64/usr/bin")
   "Directories prepended to the variable `exec-path' on Windows.")
+
+;;;; Org
+
+(defconst my-org-directory
+  (expand-file-name "~/Dropbox/org/")
+  "Root directory for Org files.")
 
 (defconst my-org-refile-excluded-directories
   '("archive/" "journal/")
@@ -113,10 +128,9 @@
 (use-package catppuccin-theme
   :ensure t
   :no-require t
+  :defines catppuccin-flavor
+  :functions catppuccin-color
   :preface
-  (defconst my-tab-line-vertical-padding 2
-    "Vertical padding around tab-line labels, in pixels.")
-
   (defun my-catppuccin-tab-line-faces (theme)
     "Set contrasting tab-line faces when THEME is Catppuccin."
     (when (eq theme 'catppuccin)
@@ -167,31 +181,28 @@
                          icon))
     (concat " " icon (and icon " ") (buffer-name buffer) " ")))
 
-(defun my-tab-line-tab-name-format (tab tabs)
-  "Format TAB among TABS without changing its background on hover."
-  (let* ((text (tab-line-tab-name-format-default tab tabs))
-         (tab-face (get-text-property 0 'face text))
-         (close-start 0))
-    ;; The default formatter uses `tab-line-highlight' as the mouse face,
-    ;; which replaces the tab's own background while the pointer is over it.
-    (put-text-property 0 (length text) 'mouse-face tab-face text)
-    ;; Restore the Nerd Font family and color while inheriting the tab face.
-    (when-let* ((icon-start
-                 (text-property-not-all 0 (length text)
-                                        'my-tab-line-icon-face nil text))
-                (icon-face
-                 (get-text-property icon-start
-                                    'my-tab-line-icon-face text)))
-      (let ((icon-end
-             (next-single-property-change
-              icon-start 'my-tab-line-icon-face text (length text))))
-        (add-face-text-property icon-start icon-end icon-face nil text)
-        (put-text-property icon-start icon-end 'mouse-face
-                           (get-text-property icon-start 'face text)
-                           text)))
+(defun my-tab-line--restore-icon-face (text)
+  "Restore the Nerd Font face saved in tab-line TEXT."
+  (when-let* ((icon-start
+               (text-property-not-all 0 (length text)
+                                      'my-tab-line-icon-face nil text))
+              (icon-face
+               (get-text-property icon-start
+                                  'my-tab-line-icon-face text)))
+    (let ((icon-end
+           (next-single-property-change
+            icon-start 'my-tab-line-icon-face text (length text))))
+      (add-face-text-property icon-start icon-end icon-face nil text)
+      (put-text-property icon-start icon-end 'mouse-face
+                         (get-text-property icon-start 'face text)
+                         text))))
+
+(defun my-tab-line--highlight-close-button (text tab-face)
+  "Highlight the close button in tab-line TEXT inheriting TAB-FACE."
+  (let ((close-start 0))
     (while (and (< close-start (length text))
                 (not (equal (get-text-property close-start 'help-echo text)
-                            "Close tab")))
+                            my-tab-line-close-help-echo)))
       (setq close-start
             (next-single-property-change
              close-start 'help-echo text (length text))))
@@ -199,12 +210,25 @@
       (add-text-properties
        close-start
        (next-single-property-change close-start 'help-echo text (length text))
-       `(mouse-face ((:foreground "#e78284") ,tab-face))
-       text))
+       `(mouse-face ((:foreground ,my-tab-line-close-hover-color)
+                     ,tab-face))
+       text))))
+
+(defun my-tab-line-tab-name-format (tab tabs)
+  "Format TAB among TABS without changing its background on hover."
+  (let* ((text (tab-line-tab-name-format-default tab tabs))
+         (tab-face (get-text-property 0 'face text)))
+    ;; The default formatter uses `tab-line-highlight' as the mouse face,
+    ;; which replaces the tab's own background while the pointer is over it.
+    (put-text-property 0 (length text) 'mouse-face tab-face text)
+    ;; Restore the Nerd Font family and color while inheriting the tab face.
+    (my-tab-line--restore-icon-face text)
+    (my-tab-line--highlight-close-button text tab-face)
     text))
 
 (use-package tab-line
   :ensure nil
+  :functions tab-line-tab-name-format-default
   :init
   (setq tab-line-new-button-show nil
         tab-line-separator ""
@@ -216,9 +240,9 @@
         (propertize "×"
                     'face '(:foreground "#888888" :height 1.0)
                     'keymap tab-line-tab-close-map
-                    'mouse-face '(:inherit tab-line-highlight
-                                  :foreground "#e78284")
-                    'help-echo "Close tab"))
+                    'mouse-face `(:inherit tab-line-highlight
+                                  :foreground ,my-tab-line-close-hover-color)
+                    'help-echo my-tab-line-close-help-echo))
   (set-face-attribute 'tab-line-tab-special nil
                       :slant 'normal
                       :weight 'normal))
@@ -255,12 +279,22 @@
 (setq make-backup-files nil
       auto-save-default nil)
 
-(savehist-mode 1)
+(use-package savehist
+  :ensure nil
+  :init
+  (savehist-mode 1))
 
-(setq recentf-max-saved-items 200)
-(recentf-mode 1)
+(use-package recentf
+  :ensure nil
+  :init
+  (recentf-mode 1)
+  :custom
+  (recentf-max-saved-items 200))
 
-(desktop-save-mode 1)
+(use-package desktop
+  :ensure nil
+  :init
+  (desktop-save-mode 1))
 
 ;;; Completion and navigation
 
@@ -321,7 +355,11 @@
 ;;;; In-buffer completion
 
 ;; Keep the capitalization of dynamic abbreviations unchanged.
-(setq dabbrev-case-replace nil)
+(use-package dabbrev
+  :ensure nil
+  :defer t
+  :custom
+  (dabbrev-case-replace nil))
 
 ;; Display completion-at-point candidates in a popup.
 (use-package corfu
@@ -357,7 +395,13 @@
 ;;;; Core
 
 (use-package org
+  :defines org-capture-templates
+  :functions (org-agenda-files org-get-next-sibling)
   :preface
+  (defun my-org-journal-directory ()
+    "Return the journal directory under `org-directory'."
+    (expand-file-name "journal/" org-directory))
+
   (defun my-org-refile-files ()
     "Return agenda files that can be used as refile targets."
     (let ((excluded-directories
@@ -374,8 +418,7 @@
 
   (defun my-org-latest-journal-file ()
     "Return the latest date-named journal file, or nil if none exists."
-    (let ((journal-directory
-           (expand-file-name "journal/" org-directory)))
+    (let ((journal-directory (my-org-journal-directory)))
       (when (file-directory-p journal-directory)
         (seq-find
          #'file-regular-p
@@ -413,7 +456,7 @@
   ;; Workflow and storage.
   (org-log-done t)
   (org-element-use-cache nil)
-  (org-agenda-files (list org-directory))
+  (org-agenda-files (list my-org-directory))
   (org-archive-location "archive/%s_archive::")
 
   ;; Refile to level 1 headings in regular files and the latest journal heading.
@@ -470,10 +513,11 @@
 (use-package org-journal
   :ensure t
   :defer t
+  :defines my-org-journal-map
   :init
   (define-prefix-command 'my-org-journal-map)
   :custom
-  (org-journal-dir (expand-file-name "journal/" org-directory))
+  (org-journal-dir (my-org-journal-directory))
   (org-journal-file-type 'weekly)
   (org-journal-file-format "%Y-%m-%d.org")
   (org-journal-date-format "%Y-%m-%d (%a)")
@@ -481,6 +525,7 @@
   (org-journal-carryover-items "TODO=\"TODO\"")
   (org-journal-enable-agenda-integration t)
   (org-journal-file-header "#+startup: content\n")
+  (org-journal-find-file-fn #'find-file)
   :bind
   (("C-c j" . my-org-journal-map)
    :map my-org-journal-map

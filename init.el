@@ -323,6 +323,29 @@
           excluded-directories))
        (org-agenda-files))))
 
+  (defun my-org-latest-journal-file ()
+    "Return the latest date-named journal file, or nil if none exists."
+    (let ((journal-directory
+           (expand-file-name "journal/" org-directory)))
+      (when (file-directory-p journal-directory)
+        (seq-find
+         #'file-regular-p
+         (sort (directory-files
+                journal-directory t
+                (rx string-start
+                    (= 4 digit) "-" (= 2 digit) "-" (= 2 digit)
+                    ".org" string-end))
+               #'string>)))))
+
+  (defun my-org-refile-target-verify ()
+    "Allow only the latest heading in the latest journal file."
+    (let ((latest-journal-file (my-org-latest-journal-file)))
+      (or (not (and buffer-file-name
+                    latest-journal-file
+                    (file-equal-p buffer-file-name latest-journal-file)))
+          (not (save-excursion
+                 (org-get-next-sibling))))))
+
   :init
   (setq org-directory my-org-directory
         org-default-notes-file
@@ -344,8 +367,10 @@
   (org-agenda-files (list org-directory))
   (org-archive-location "archive/%s_archive::")
 
-  ;; Refile to level 1 headings outside the excluded directories.
-  (org-refile-targets '((my-org-refile-files :level . 1)))
+  ;; Refile to level 1 headings in regular files and the latest journal heading.
+  (org-refile-targets '((my-org-refile-files :level . 1)
+                        (my-org-latest-journal-file :level . 1)))
+  (org-refile-target-verify-function #'my-org-refile-target-verify)
   (org-refile-use-outline-path t)
   (org-outline-path-complete-in-steps nil)
 

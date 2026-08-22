@@ -25,6 +25,7 @@ The following external Emacs packages are installed automatically by
 | --- | --- |
 | [`catppuccin-theme`](https://github.com/catppuccin/emacs) | Provides the Catppuccin Frappé color theme. |
 | [`simple-modeline`](https://github.com/gexplorer/simple-modeline) | Provides a minimal mode line. |
+| [`nerd-icons`](https://github.com/rainstormstudio/nerd-icons.el) | Adds file-type icons to tab-line tabs. |
 | [`easy-kill`](https://github.com/leoliu/easy-kill) | Provides context-aware commands for copying and marking text. |
 | [`vertico`](https://github.com/minad/vertico) | Displays minibuffer completion candidates vertically. |
 | [`orderless`](https://github.com/oantolin/orderless) | Enables order-independent completion matching. |
@@ -34,7 +35,6 @@ The following external Emacs packages are installed automatically by
 | [`cape`](https://github.com/minad/cape) | Adds completion-at-point backends for words and file paths. |
 | [`org-appear`](https://github.com/awth13/org-appear) | Reveals hidden Org markup around the cursor. |
 | [`org-journal`](https://github.com/bastibe/org-journal) | Creates and manages journal entries in Org mode. |
-| [`gptel`](https://github.com/karthink/gptel) | Provides an Emacs client for interacting with large language models. |
 
 ## Additional key bindings
 

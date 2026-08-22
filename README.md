@@ -43,7 +43,7 @@ The following external Emacs packages are installed automatically by
 | --- | --- | --- |
 | `C-tab` | `consult-buffer` | Switch between buffers and recent files. |
 | `C-c f` | `consult-find` | Select a directory and find files by name. |
-| `C-c r` | `consult-ripgrep` | Select a directory and search its contents with ripgrep. |
+| `C-c g` | `consult-ripgrep` | Select a directory and search its contents with ripgrep. |
 | `C-c l` | `org-store-link` | Store a link to the current location. |
 | `C-c a` | `org-agenda` | Open the Org agenda dispatcher. |
 | `C-c c` | `org-capture` | Capture a new entry using an Org capture template. |

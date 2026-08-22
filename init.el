@@ -6,6 +6,11 @@
 
 ;;; Code:
 
+;;; Customize storage
+
+;; Choose the Customize output file before package setup can save settings.
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+
 ;;; Package management
 
 ;; Load Emacs' built-in package manager.
@@ -119,11 +124,12 @@
 (setq-default cursor-type 'bar)
 (blink-cursor-mode 1)
 
-;; Use the Ef Light theme.
-;; (use-package ef-themes
-;;   :ensure t
-;;   :config
-;;   (load-theme 'ef-light t))
+;; Keep the Ef Light theme available as a disabled alternative.
+(use-package ef-themes
+  :ensure t
+  :disabled t
+  :config
+  (load-theme 'ef-light t))
 
 (use-package catppuccin-theme
   :ensure t
@@ -168,67 +174,67 @@
 (use-package nerd-icons
   :ensure t)
 
-(defun my-tab-line-tab-name (buffer &optional _buffers)
-  "Return BUFFER's name with a file icon and display padding."
-  (let* ((file (buffer-file-name buffer))
-         (icon (when file
-                 (copy-sequence (nerd-icons-icon-for-file file)))))
-    (when icon
-      ;; Save the icon face because the default tab formatter replaces it.
-      (put-text-property 0 (length icon)
-                         'my-tab-line-icon-face
-                         (get-text-property 0 'face icon)
-                         icon))
-    (concat " " icon (and icon " ") (buffer-name buffer) " ")))
-
-(defun my-tab-line--restore-icon-face (text)
-  "Restore the Nerd Font face saved in tab-line TEXT."
-  (when-let* ((icon-start
-               (text-property-not-all 0 (length text)
-                                      'my-tab-line-icon-face nil text))
-              (icon-face
-               (get-text-property icon-start
-                                  'my-tab-line-icon-face text)))
-    (let ((icon-end
-           (next-single-property-change
-            icon-start 'my-tab-line-icon-face text (length text))))
-      (add-face-text-property icon-start icon-end icon-face nil text)
-      (put-text-property icon-start icon-end 'mouse-face
-                         (get-text-property icon-start 'face text)
-                         text))))
-
-(defun my-tab-line--highlight-close-button (text tab-face)
-  "Highlight the close button in tab-line TEXT inheriting TAB-FACE."
-  (let ((close-start 0))
-    (while (and (< close-start (length text))
-                (not (equal (get-text-property close-start 'help-echo text)
-                            my-tab-line-close-help-echo)))
-      (setq close-start
-            (next-single-property-change
-             close-start 'help-echo text (length text))))
-    (when (< close-start (length text))
-      (add-text-properties
-       close-start
-       (next-single-property-change close-start 'help-echo text (length text))
-       `(mouse-face ((:foreground ,my-tab-line-close-hover-color)
-                     ,tab-face))
-       text))))
-
-(defun my-tab-line-tab-name-format (tab tabs)
-  "Format TAB among TABS without changing its background on hover."
-  (let* ((text (tab-line-tab-name-format-default tab tabs))
-         (tab-face (get-text-property 0 'face text)))
-    ;; The default formatter uses `tab-line-highlight' as the mouse face,
-    ;; which replaces the tab's own background while the pointer is over it.
-    (put-text-property 0 (length text) 'mouse-face tab-face text)
-    ;; Restore the Nerd Font family and color while inheriting the tab face.
-    (my-tab-line--restore-icon-face text)
-    (my-tab-line--highlight-close-button text tab-face)
-    text))
-
 (use-package tab-line
   :ensure nil
   :functions tab-line-tab-name-format-default
+  :preface
+  (defun my-tab-line-tab-name (buffer &optional _buffers)
+    "Return BUFFER's name with a file icon and display padding."
+    (let* ((file (buffer-file-name buffer))
+           (icon (when file
+                   (copy-sequence (nerd-icons-icon-for-file file)))))
+      (when icon
+        ;; Save the icon face because the default tab formatter replaces it.
+        (put-text-property 0 (length icon)
+                           'my-tab-line-icon-face
+                           (get-text-property 0 'face icon)
+                           icon))
+      (concat " " icon (and icon " ") (buffer-name buffer) " ")))
+
+  (defun my-tab-line--restore-icon-face (text)
+    "Restore the Nerd Font face saved in tab-line TEXT."
+    (when-let* ((icon-start
+                 (text-property-not-all 0 (length text)
+                                        'my-tab-line-icon-face nil text))
+                (icon-face
+                 (get-text-property icon-start
+                                    'my-tab-line-icon-face text)))
+      (let ((icon-end
+             (next-single-property-change
+              icon-start 'my-tab-line-icon-face text (length text))))
+        (add-face-text-property icon-start icon-end icon-face nil text)
+        (put-text-property icon-start icon-end 'mouse-face
+                           (get-text-property icon-start 'face text)
+                           text))))
+
+  (defun my-tab-line--highlight-close-button (text tab-face)
+    "Highlight the close button in tab-line TEXT inheriting TAB-FACE."
+    (let ((close-start 0))
+      (while (and (< close-start (length text))
+                  (not (equal (get-text-property close-start 'help-echo text)
+                              my-tab-line-close-help-echo)))
+        (setq close-start
+              (next-single-property-change
+               close-start 'help-echo text (length text))))
+      (when (< close-start (length text))
+        (add-text-properties
+         close-start
+         (next-single-property-change close-start 'help-echo text (length text))
+         `(mouse-face ((:foreground ,my-tab-line-close-hover-color)
+                       ,tab-face))
+         text))))
+
+  (defun my-tab-line-tab-name-format (tab tabs)
+    "Format TAB among TABS without changing its background on hover."
+    (let* ((text (tab-line-tab-name-format-default tab tabs))
+           (tab-face (get-text-property 0 'face text)))
+      ;; The default formatter uses `tab-line-highlight' as the mouse face,
+      ;; which replaces the tab's own background while the pointer is over it.
+      (put-text-property 0 (length text) 'mouse-face tab-face text)
+      ;; Restore the Nerd Font family and color while inheriting the tab face.
+      (my-tab-line--restore-icon-face text)
+      (my-tab-line--highlight-close-button text tab-face)
+      text))
   :init
   (setq tab-line-new-button-show nil
         tab-line-separator ""
@@ -300,55 +306,58 @@
 
 ;;;; Minibuffer completion
 
-(defvar mini-frame-frame)
-(defvar mini-frame-completions-frame)
-(defvar pgtk-wait-for-event-timeout)
-
-(defconst my-mini-frame--pgtk-hide-timeout 0.02
-  "Maximum PGTK event wait when hiding a mini-frame child frame.")
-
-(defun my-mini-frame--show-parameters ()
-  "Return frame parameters for the minibuffer child frame."
-  (append
-   `((top . 10)
-     (width . 0.7)
-     (left . 0.5)
-     (font . ,my-default-font))
-   ;; Emacs 30 PGTK can lose keyboard focus after hiding a focused child.
-   ;; Keep physical GTK focus in the parent; `mini-frame' redirects the
-   ;; parent's input events to this child while its minibuffer is active.
-   (when (eq (window-system (selected-frame)) 'pgtk)
-     '((no-accept-focus . t)))))
-
-(defun my-mini-frame--hide-pgtk-child-frame (hide &optional frame force)
-  "Call HIDE for FRAME with optimized PGTK mini-frame cleanup.
-FORCE is the optional second argument of `make-frame-invisible'."
-  (let ((target (or frame (selected-frame))))
-    (if (and (frame-live-p target)
-             (eq (window-system target) 'pgtk)
-             (or (eq target mini-frame-frame)
-                 (eq target mini-frame-completions-frame)))
-        (progn
-          (when (eq target mini-frame-frame)
-            (let ((parent (frame-parent target)))
-              (when (frame-live-p parent)
-                (redirect-frame-focus parent nil))))
-          (when (frame-visible-p target)
-            ;; PGTK's hide path waits for the entire timeout even if no map
-            ;; event is pending.  Keep a short drain period for race safety.
-            (let ((pgtk-wait-for-event-timeout
-                   (if (floatp pgtk-wait-for-event-timeout)
-                       (min pgtk-wait-for-event-timeout
-                            my-mini-frame--pgtk-hide-timeout)
-                     pgtk-wait-for-event-timeout)))
-              (funcall hide target force))))
-      (funcall hide frame force))))
-
 ;; Display the minibuffer in a child frame at the top of graphical frames.
 ;; `mini-frame' falls back to the regular minibuffer on terminal frames, so
 ;; keeping the mode enabled also supports GUI frames created by the daemon.
 (use-package mini-frame
   :ensure t
+  :defines (mini-frame-frame
+            mini-frame-completions-frame
+            pgtk-wait-for-event-timeout)
+  :preface
+  (defconst my-mini-frame--pgtk-hide-timeout 0.02
+    "Maximum PGTK event wait when hiding a mini-frame child frame.")
+
+  (defun my-mini-frame--show-parameters ()
+    "Return frame parameters for the minibuffer child frame."
+    (append
+     `((top . 10)
+       (width . 0.7)
+       (left . 0.5)
+       (font . ,my-default-font))
+     ;; Emacs 30 PGTK can lose keyboard focus after hiding a focused child.
+     ;; Keep physical GTK focus in the parent; `mini-frame' redirects the
+     ;; parent's input events to this child while its minibuffer is active.
+     (when (eq (window-system (selected-frame)) 'pgtk)
+       '((no-accept-focus . t)))))
+
+  (defun my-mini-frame--pgtk-child-frame-p (frame)
+    "Return non-nil when FRAME is a live PGTK mini-frame child frame."
+    (and (frame-live-p frame)
+         (eq (window-system frame) 'pgtk)
+         (or (eq frame mini-frame-frame)
+             (eq frame mini-frame-completions-frame))))
+
+  (defun my-mini-frame--hide-pgtk-child-frame (hide &optional frame force)
+    "Call HIDE for FRAME with optimized PGTK mini-frame cleanup.
+FORCE is the optional second argument of `make-frame-invisible'."
+    (let ((target (or frame (selected-frame))))
+      (if (my-mini-frame--pgtk-child-frame-p target)
+          (progn
+            (when (eq target mini-frame-frame)
+              (let ((parent (frame-parent target)))
+                (when (frame-live-p parent)
+                  (redirect-frame-focus parent nil))))
+            (when (frame-visible-p target)
+              ;; PGTK's hide path waits for the entire timeout even if no map
+              ;; event is pending.  Keep a short drain period for race safety.
+              (let ((pgtk-wait-for-event-timeout
+                     (if (floatp pgtk-wait-for-event-timeout)
+                         (min pgtk-wait-for-event-timeout
+                              my-mini-frame--pgtk-hide-timeout)
+                       pgtk-wait-for-event-timeout)))
+                (funcall hide target force))))
+        (funcall hide frame force))))
   :custom
   (mini-frame-show-parameters #'my-mini-frame--show-parameters)
   ;; Vertico displays candidates inside the minibuffer, so a second child
@@ -461,6 +470,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 ;; Display available key continuations after a prefix key is pressed.
 (use-package which-key
+  :ensure nil
   :init
   (which-key-mode 1))
 
@@ -469,6 +479,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
 ;;;; Core
 
 (use-package org
+  :ensure nil
   :defines org-capture-templates
   :functions (org-agenda-files org-get-next-sibling)
   :preface
@@ -608,20 +619,18 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 ;;; AI assistance
 
-;; Use an OAuth-authenticated OpenAI backend with gptel.
-;; (use-package gptel
-;;   :ensure t
-;;   :config
-;;   (setq gptel-model 'gpt-5.6-sol
-;;         gptel-backend
-;;         (gptel-make-openai-oauth "OpenAI-sub")))
+;; Keep the OAuth-authenticated OpenAI backend available but disabled.
+(use-package gptel
+  :ensure t
+  :disabled t
+  :config
+  (setq gptel-model 'gpt-5.6-sol
+        gptel-backend
+        (gptel-make-openai-oauth "OpenAI-sub")))
 
 ;;; Customize
 
-;; Keep settings written by Customize out of this file.
-(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
-
-;; Load Customize settings when the file exists.
+;; Apply settings written by Customize after the declarative settings above.
 (load custom-file 'noerror)
 
 ;;; init.el ends here

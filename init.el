@@ -300,6 +300,80 @@
 
 ;;;; Minibuffer completion
 
+(defvar mini-frame-frame)
+(defvar mini-frame-completions-frame)
+(defvar pgtk-wait-for-event-timeout)
+
+(defconst my-mini-frame--pgtk-hide-timeout 0.02
+  "Maximum PGTK event wait when hiding a mini-frame child frame.")
+
+(defun my-mini-frame--show-parameters ()
+  "Return frame parameters for the minibuffer child frame."
+  (append
+   `((top . 10)
+     (width . 0.7)
+     (left . 0.5)
+     (font . ,my-default-font))
+   ;; Emacs 30 PGTK can lose keyboard focus after hiding a focused child.
+   ;; Keep physical GTK focus in the parent; `mini-frame' redirects the
+   ;; parent's input events to this child while its minibuffer is active.
+   (when (eq (window-system (selected-frame)) 'pgtk)
+     '((no-accept-focus . t)))))
+
+(defun my-mini-frame--hide-pgtk-child-frame (hide &optional frame force)
+  "Call HIDE for FRAME with optimized PGTK mini-frame cleanup.
+FORCE is the optional second argument of `make-frame-invisible'."
+  (let ((target (or frame (selected-frame))))
+    (if (and (frame-live-p target)
+             (eq (window-system target) 'pgtk)
+             (or (eq target mini-frame-frame)
+                 (eq target mini-frame-completions-frame)))
+        (progn
+          (when (eq target mini-frame-frame)
+            (let ((parent (frame-parent target)))
+              (when (frame-live-p parent)
+                (redirect-frame-focus parent nil))))
+          (when (frame-visible-p target)
+            ;; PGTK's hide path waits for the entire timeout even if no map
+            ;; event is pending.  Keep a short drain period for race safety.
+            (let ((pgtk-wait-for-event-timeout
+                   (if (floatp pgtk-wait-for-event-timeout)
+                       (min pgtk-wait-for-event-timeout
+                            my-mini-frame--pgtk-hide-timeout)
+                     pgtk-wait-for-event-timeout)))
+              (funcall hide target force))))
+      (funcall hide frame force))))
+
+;; Display the minibuffer in a child frame at the top of graphical frames.
+;; `mini-frame' falls back to the regular minibuffer on terminal frames, so
+;; keeping the mode enabled also supports GUI frames created by the daemon.
+(use-package mini-frame
+  :ensure t
+  :custom
+  (mini-frame-show-parameters #'my-mini-frame--show-parameters)
+  ;; Vertico displays candidates inside the minibuffer, so a second child
+  ;; frame for *Completions* only adds frame and focus management overhead.
+  (mini-frame-handle-completions nil)
+  ;; Keep the hidden child frame attached to its Emacs parent.  Detaching it
+  ;; can make PGTK/Wayland expose it as a separate top-level window.
+  (mini-frame-detach-on-hide nil)
+  ;; Reuse the hidden child frame.  Deleting a focused PGTK child frame can
+  ;; leave its parent without keyboard focus on Emacs 30.
+  (mini-frame-delete-on-hide nil)
+  (mini-frame-standalone nil)
+  :config
+  ;; Remove earlier focus-recovery workarounds when this file is reevaluated.
+  (dolist (function '(my-mini-frame--restore-pgtk-parent-focus
+                      my-mini-frame--focus-pgtk-parent-before-hide
+                      my-mini-frame--clear-pgtk-focus-redirect
+                      my-mini-frame--hide-pgtk-child-frame))
+    (advice-remove 'make-frame-invisible function))
+  (advice-add 'make-frame-invisible
+              :around
+              #'my-mini-frame--hide-pgtk-child-frame)
+
+  (mini-frame-mode 1))
+
 ;; Display minibuffer completion candidates vertically.
 (use-package vertico
   :ensure t

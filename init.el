@@ -480,9 +480,13 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 (use-package org
   :ensure nil
-  :defines org-capture-templates
-  :functions (org-agenda-files org-get-next-sibling)
+  :defines (org-capture-templates org-refile-history)
+  :functions (org-agenda-files org-get-next-sibling
+                               org-refile-get-location org-refile-get-targets)
   :preface
+  (defvar my-org-refile--history-validation-pending nil
+    "Non-nil while the next refile target table should validate history.")
+
   (defun my-org-journal-directory ()
     "Return the journal directory under `org-directory'."
     (expand-file-name "journal/" org-directory))
@@ -522,6 +526,42 @@ FORCE is the optional second argument of `make-frame-invisible'."
                     (file-equal-p buffer-file-name latest-journal-file)))
           (not (save-excursion
                  (org-get-next-sibling))))))
+
+  (defun my-org-refile--ensure-valid-history (targets)
+    "Keep `org-refile-history' aligned with the current TARGETS.
+When no saved history entry is still a completion candidate, use
+the first current target as the default.  Return TARGETS unchanged."
+    (when my-org-refile--history-validation-pending
+      (setq my-org-refile--history-validation-pending nil)
+      (let* ((current-file
+              (buffer-file-name (buffer-base-buffer (current-buffer))))
+             (filename (and current-file (file-truename current-file)))
+             (path-suffix (if org-refile-use-outline-path "/" ""))
+             (target-names
+              (mapcar
+               (lambda (target)
+                 (if (and
+                      (not (member org-refile-use-outline-path
+                                   '(file full-file-path title)))
+                      (not (equal filename
+                                  (file-truename (nth 1 target)))))
+                     (concat (car target) path-suffix " ("
+                             (file-name-nondirectory (nth 1 target)) ")")
+                   (concat (car target) path-suffix)))
+               targets))
+             (valid-history
+              (seq-filter (lambda (entry)
+                            (member entry target-names))
+                          org-refile-history)))
+        (setq org-refile-history
+              (or valid-history
+                  (and target-names (list (car target-names)))))))
+    targets)
+
+  (defun my-org-refile--with-valid-history (function &rest arguments)
+    "Call FUNCTION while arranging to validate refile history."
+    (let ((my-org-refile--history-validation-pending t))
+      (apply function arguments)))
 
   :init
   (setq org-directory my-org-directory
@@ -570,6 +610,20 @@ FORCE is the optional second argument of `make-frame-invisible'."
   (org-mode . org-indent-mode)
 
   :config
+  ;; Prevent saved refile history from becoming a stale default when the
+  ;; available journal target changes.
+  (with-eval-after-load 'org-refile
+    (unless (advice-member-p #'my-org-refile--with-valid-history
+                             'org-refile-get-location)
+      (advice-add 'org-refile-get-location
+                  :around
+                  #'my-org-refile--with-valid-history))
+    (unless (advice-member-p #'my-org-refile--ensure-valid-history
+                             'org-refile-get-targets)
+      (advice-add 'org-refile-get-targets
+                  :filter-return
+                  #'my-org-refile--ensure-valid-history)))
+
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((calc . t)))

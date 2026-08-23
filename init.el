@@ -176,7 +176,9 @@
 
 (use-package tab-line
   :ensure nil
-  :functions tab-line-tab-name-format-default
+  :functions (tab-line-force-update
+              tab-line-tab-name-format-default
+              tab-line-tabs-fixed-window-buffers)
   :preface
   (defun my-tab-line-tab-name (buffer &optional _buffers)
     "Return BUFFER's name with a file icon and display padding."
@@ -236,7 +238,8 @@
       (my-tab-line--highlight-close-button text tab-face)
       text))
   :init
-  (setq tab-line-new-button-show nil
+  (setq tab-line-tabs-function #'tab-line-tabs-fixed-window-buffers
+        tab-line-new-button-show nil
         tab-line-separator ""
         tab-line-tab-name-function #'my-tab-line-tab-name)
   (global-tab-line-mode 1)
@@ -299,7 +302,37 @@
 
 (use-package desktop
   :ensure nil
+  :preface
+  (defun my-desktop-save-tab-line-buffer-order ()
+    "Store each window's tab-line buffer order as writable names."
+    (walk-windows
+     (lambda (window)
+       (with-selected-window window
+         (set-window-parameter
+          window 'my-tab-line-buffer-order
+          (mapcar #'buffer-name
+                  (tab-line-tabs-fixed-window-buffers)))))
+     'no-minibuffer t))
+
+  (defun my-desktop-restore-tab-line-buffer-order ()
+    "Restore each window's tab-line buffer order from saved names."
+    (walk-windows
+     (lambda (window)
+       (when-let ((names (window-parameter
+                          window 'my-tab-line-buffer-order)))
+         (set-window-parameter
+          window 'tab-line-buffers
+          (delq nil (mapcar #'get-buffer names)))))
+     'no-minibuffer t)
+    (tab-line-force-update t))
   :init
+  ;; Buffer objects are not writable in desktop files, so mirror their names
+  ;; in a dedicated window parameter that frameset can serialize.
+  (add-to-list 'window-persistent-parameters
+               '(my-tab-line-buffer-order . writable))
+  (add-hook 'desktop-save-hook #'my-desktop-save-tab-line-buffer-order)
+  (add-hook 'desktop-after-read-hook
+            #'my-desktop-restore-tab-line-buffer-order)
   (desktop-save-mode 1))
 
 ;;; Completion and navigation

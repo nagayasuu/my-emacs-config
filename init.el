@@ -396,9 +396,10 @@ FORCE is the optional second argument of `make-frame-invisible'."
   ;; Vertico displays candidates inside the minibuffer, so a second child
   ;; frame for *Completions* only adds frame and focus management overhead.
   (mini-frame-handle-completions nil)
-  ;; Keep the hidden child frame attached to its Emacs parent.  Detaching it
-  ;; can make PGTK/Wayland expose it as a separate top-level window.
-  (mini-frame-detach-on-hide nil)
+  ;; Keep the hidden child frame attached on PGTK/Wayland.  On Windows,
+  ;; detaching lets `mini-frame' recover when a hidden frame still appears
+  ;; visible to `frame-visible-p'.
+  (mini-frame-detach-on-hide (eq system-type 'windows-nt))
   ;; Reuse the hidden child frame.  Deleting a focused PGTK child frame can
   ;; leave its parent without keyboard focus on Emacs 30.
   (mini-frame-delete-on-hide nil)

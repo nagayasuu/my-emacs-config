@@ -689,6 +689,20 @@ the first current target as the default.  Return TARGETS unchanged."
   :ensure t
   :defer t
   :defines my-org-journal-map
+  :preface
+  (defun my-org-journal-fold-current-file (&rest _)
+    "Fold older dates and show current date headings without their bodies."
+    (when (and (derived-mode-p 'org-mode)
+               (org-journal-is-journal)
+               (not (org-before-first-heading-p)))
+      (save-excursion
+        (save-restriction
+          (widen)
+          (org-back-to-heading t)
+          (while (org-up-heading-safe))
+          (org-overview)
+          (org-narrow-to-subtree)
+          (org-content)))))
   :init
   (define-prefix-command 'my-org-journal-map)
   :custom
@@ -705,7 +719,13 @@ the first current target as the default.  Return TARGETS unchanged."
   (("C-c j" . my-org-journal-map)
    :map my-org-journal-map
    ("j" . org-journal-new-entry)
-   ("o" . org-journal-open-current-journal-file)))
+   ("o" . org-journal-open-current-journal-file))
+  :config
+  ;; Apply the same visibility after opening or creating the current entry.
+  (dolist (command '(org-journal-new-entry
+                     org-journal-open-current-journal-file))
+    (unless (advice-member-p #'my-org-journal-fold-current-file command)
+      (advice-add command :after #'my-org-journal-fold-current-file))))
 
 ;;; AI assistance
 

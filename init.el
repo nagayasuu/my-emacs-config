@@ -31,7 +31,10 @@
 
 ;;;; Appearance
 
-(defconst my-default-font "UDEV Gothic JPDOC-15"
+(defconst my-default-font
+  (if (eq system-type 'gnu/linux)
+      "UDEV Gothic JPDOC-15"
+    "UDEV Gothic JPDOC-12")
   "Font used in graphical frames.")
 
 (defconst my-tab-line-vertical-padding 2

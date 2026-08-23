@@ -53,7 +53,9 @@
 ;;;; Org
 
 (defconst my-org-directory
-  (expand-file-name "~/Dropbox/org/")
+  (if (eq system-type 'windows-nt)
+      (expand-file-name "Dropbox/org/" (getenv "USERPROFILE"))
+    (expand-file-name "~/Dropbox/org/"))
   "Root directory for Org files.")
 
 (defconst my-org-refile-excluded-directories

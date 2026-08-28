@@ -520,7 +520,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
 (use-package org
   :ensure nil
   :defines (org-capture-templates org-refile-history)
-  :functions (org-agenda-files org-get-next-sibling
+  :functions (org-agenda-files org-get-next-sibling org-id-new
                                org-refile-get-location org-refile-get-targets)
   :preface
   (defvar my-org-refile--history-validation-pending nil
@@ -609,11 +609,11 @@ the first current target as the default.  Return TARGETS unchanged."
         org-capture-templates
         '(("t" "Task" entry
            (file+headline org-default-notes-file "Tasks")
-           "* TODO %?\n:PROPERTIES:\n:CREATED_AT: %U\n:SOURCE_LINK: %a\n:END:\n"
+           "* TODO %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
            :empty-lines 1)
           ("n" "Note" entry
            (file+headline org-default-notes-file "Notes")
-           "* %?\n:PROPERTIES:\n:CREATED_AT: %U\n:SOURCE_LINK: %a\n:END:\n"
+           "* %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
            :empty-lines 1)))
 
   :custom

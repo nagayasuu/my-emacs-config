@@ -810,6 +810,7 @@ folds that separator directly."
   :ensure t
   :defer t
   :defines my-org-journal-map
+  :functions org-journal--list-dates
   :preface
   (defun my-org-journal-add-entry-id ()
     "Add metadata to the newly created journal entry."
@@ -818,6 +819,13 @@ folds that separator directly."
      (point)
      "CREATED_AT"
      (format-time-string (org-time-stamp-format t t))))
+
+  (defun my-org-journal-new-entry-on-startup ()
+    "Create today's date heading and carry over TODO items if it is absent."
+    (require 'org-journal)
+    (unless (member (calendar-current-date)
+                    (org-journal--list-dates))
+      (org-journal-new-entry t)))
 
   (defun my-org-journal-fold-current-file (&rest _)
     "Fold older dates and show current date headings without their bodies."
@@ -845,6 +853,8 @@ is created."
         (org-show-entry))))
   :init
   (define-prefix-command 'my-org-journal-map)
+  (add-hook 'emacs-startup-hook
+            #'my-org-journal-new-entry-on-startup)
   :custom
   (org-journal-dir (my-org-journal-directory))
   (org-journal-file-type 'weekly)

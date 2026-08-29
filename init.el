@@ -522,7 +522,8 @@ FORCE is the optional second argument of `make-frame-invisible'."
   :defines (org-capture-templates org-refile-history)
   :functions (org-agenda-files org-get-next-sibling org-id-new
                                org-refile-get-location
-                               org-refile-get-targets org-show-entry)
+                               org-refile-get-targets org-show-entry
+                               org-fold-hide-drawer-all)
   :preface
   (defvar my-org-refile--history-validation-pending nil
     "Non-nil while the next refile target table should validate history.")
@@ -603,6 +604,11 @@ the first current target as the default.  Return TARGETS unchanged."
     (let ((my-org-refile--history-validation-pending t))
       (apply function arguments)))
 
+  (defun my-org-capture-fold-properties ()
+    "Fold property drawers after `org-capture'."
+    (when (derived-mode-p 'org-mode)
+      (org-fold-hide-drawer-all)))
+
   :init
   (setq org-directory my-org-directory
         org-default-notes-file
@@ -652,6 +658,9 @@ the first current target as the default.  Return TARGETS unchanged."
   (org-mode . org-indent-mode)
 
   :config
+  ;; Fold property drawers in the newly captured entry.
+  (add-hook 'org-capture-mode-hook #'my-org-capture-fold-properties)
+
   ;; Prevent saved refile history from becoming a stale default when the
   ;; available journal target changes.
   (with-eval-after-load 'org-refile

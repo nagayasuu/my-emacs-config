@@ -472,7 +472,8 @@ FORCE is the optional second argument of `make-frame-invisible'."
   :bind
   (("<C-tab>" . consult-buffer)
    ("C-c f" . my-consult-find-select-directory)
-   ("C-c g" . my-consult-ripgrep-select-directory)))
+   ("C-c g" . my-consult-ripgrep-select-directory)
+   ("C-c h" . consult-org-agenda)))
 
 ;;;; In-buffer completion
 

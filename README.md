@@ -42,12 +42,13 @@ The following external Emacs packages are installed automatically by
 | Key | Command | Description |
 | --- | --- | --- |
 | `C-tab` | `consult-buffer` | Switch between buffers and recent files. |
-| `C-c f` | `consult-find` | Select a directory and find files by name. |
-| `C-c g` | `consult-ripgrep` | Select a directory and search its contents with ripgrep. |
+| `C-c f` | `my-consult-find-select-directory` | Select a directory and find files by name. |
+| `C-c g` | `my-consult-ripgrep-select-directory` | Select a directory and search its contents with ripgrep. |
 | `C-c h` | `consult-org-agenda` | Select a heading from the Org agenda files. |
 | `C-c l` | `org-store-link` | Store a link to the current location. |
 | `C-c a` | `org-agenda` | Open the Org agenda dispatcher. |
 | `C-c c` | `org-capture` | Capture a new entry using an Org capture template. |
+| `C-c A` | `my-org-archive-subtrees-without-open-todo` | Archive direct child subtrees with no open TODO items. |
 | `C-c e` | `org-emphasize` | Add emphasis to text in an Org buffer. |
 | `C-c j j` | `org-journal-new-entry` | Create a new Org journal entry. |
 | `C-c j o` | `org-journal-open-current-journal-file` | Open the current Org journal file. |

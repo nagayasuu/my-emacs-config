@@ -535,7 +535,8 @@ FORCE is the optional second argument of `make-frame-invisible'."
 (use-package org
   :ensure nil
   :defines (org-capture-templates org-refile-history)
-  :functions (org-agenda-files org-get-next-sibling org-id-new
+  :functions (org-agenda-files org-archive-all-done
+                               org-get-next-sibling org-id-new
                                org-refile-get-location
                                org-refile-get-targets org-show-entry
                                org-fold-folded-p org-fold-hide-drawer-all
@@ -579,6 +580,15 @@ FORCE is the optional second argument of `make-frame-invisible'."
                     (= 4 digit) "-" (= 2 digit) "-" (= 2 digit)
                     ".org" string-end))
                #'string>)))))
+
+  (defun my-org-archive-subtrees-without-open-todo ()
+    "Archive direct child subtrees with no open TODO items without prompting."
+    (interactive)
+    (unless (org-at-heading-p)
+      (user-error "Point must be on an Org heading"))
+    (require 'org-archive)
+    (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+      (org-archive-all-done)))
 
   (defun my-org-refile-target-verify ()
     "Allow only the latest heading in the latest journal file."
@@ -731,6 +741,7 @@ folds that separator directly."
    ("C-c a" . org-agenda)
    ("C-c c" . org-capture)
    :map org-mode-map
+   ("C-c A" . my-org-archive-subtrees-without-open-todo)
    ("C-c e" . org-emphasize)
    ([remap org-cycle] . my-org-cycle-list-item-through-blank-lines))
 

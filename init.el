@@ -621,6 +621,9 @@ the first current target as the default.  Return TARGETS unchanged."
   ;; Workflow and storage.
   (org-log-done t)
   (org-element-use-cache nil)
+  ;; Keep property values separated by a single space instead of aligning
+  ;; them to a fixed property-name width.
+  (org-property-format "%s %s")
   (org-agenda-files (list my-org-directory))
   (org-archive-location "archive/%s_archive::")
 
@@ -715,8 +718,12 @@ the first current target as the default.  Return TARGETS unchanged."
   :defines my-org-journal-map
   :preface
   (defun my-org-journal-add-entry-id ()
-    "Add an Org ID to the newly created journal entry."
-    (org-id-get-create))
+    "Add metadata to the newly created journal entry."
+    (org-id-get-create)
+    (org-entry-put
+     (point)
+     "CREATED_AT"
+     (format-time-string (org-time-stamp-format t t))))
 
   (defun my-org-journal-fold-current-file (&rest _)
     "Fold older dates and show current date headings without their bodies."

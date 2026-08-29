@@ -519,7 +519,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 (use-package org
   :ensure nil
-  :defines (org-capture-templates org-refile-history)
+  :defines (org-capture-templates org-link-frame-setup org-refile-history)
   :functions (org-agenda-files org-get-next-sibling org-id-get-create
                                org-id-new org-refile-get-location
                                org-refile-get-targets org-show-entry)
@@ -650,6 +650,9 @@ the first current target as the default.  Return TARGETS unchanged."
   (org-mode . org-indent-mode)
 
   :config
+  ;; Open file links in the current window when following them with `C-c C-o'.
+  (setf (alist-get 'file org-link-frame-setup) #'find-file)
+
   ;; Prevent saved refile history from becoming a stale default when the
   ;; available journal target changes.
   (with-eval-after-load 'org-refile

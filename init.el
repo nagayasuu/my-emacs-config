@@ -105,8 +105,6 @@
 ;;;; Startup behavior
 
 (setq inhibit-startup-screen t
-      initial-major-mode 'org-mode
-      initial-scratch-message nil
       frame-title-format '("%b")
       ring-bell-function #'ignore)
 

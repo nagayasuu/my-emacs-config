@@ -519,9 +519,9 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 (use-package org
   :ensure nil
-  :defines (org-capture-templates org-link-frame-setup org-refile-history)
-  :functions (org-agenda-files org-get-next-sibling org-id-get-create
-                               org-id-new org-refile-get-location
+  :defines (org-capture-templates org-refile-history)
+  :functions (org-agenda-files org-get-next-sibling org-id-new
+                               org-refile-get-location
                                org-refile-get-targets org-show-entry)
   :preface
   (defvar my-org-refile--history-validation-pending nil
@@ -631,8 +631,7 @@ the first current target as the default.  Return TARGETS unchanged."
   (org-refile-use-outline-path t)
   (org-outline-path-complete-in-steps nil)
 
-  ;; Display descriptive links and hide emphasis markers such as *, /, =, and ~.
-  (org-link-descriptive t)
+  ;; Hide emphasis markers such as *, /, =, and ~.
   (org-hide-emphasis-markers t)
 
   ;; Include plain lists in subtree visibility cycling.
@@ -650,9 +649,6 @@ the first current target as the default.  Return TARGETS unchanged."
   (org-mode . org-indent-mode)
 
   :config
-  ;; Open file links in the current window when following them with `C-c C-o'.
-  (setf (alist-get 'file org-link-frame-setup) #'find-file)
-
   ;; Prevent saved refile history from becoming a stale default when the
   ;; available journal target changes.
   (with-eval-after-load 'org-refile
@@ -673,6 +669,27 @@ the first current target as the default.  Return TARGETS unchanged."
   ;; Use 20 digits of internal precision for Calc source blocks.
   (with-eval-after-load 'calc
     (setq-default calc-internal-prec 20)))
+
+;;;; Links
+
+;; Configure how Org links are displayed and followed.
+(use-package ol
+  :ensure nil
+  :after org
+  :defines org-link-frame-setup
+  :custom
+  (org-link-descriptive t)
+  :config
+  ;; Open file links in the current window when following them with `C-c C-o'.
+  (setf (alist-get 'file org-link-frame-setup) #'find-file))
+
+;; Store links to Org entries using stable IDs, creating IDs as needed.
+(use-package org-id
+  :ensure nil
+  :after org
+  :functions org-id-get-create
+  :custom
+  (org-id-link-to-org-use-id t))
 
 ;;;; Display
 

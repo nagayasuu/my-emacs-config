@@ -888,7 +888,8 @@ is created."
   (org-journal-time-format "")
   (org-journal-carryover-items "TODO=\"TODO\"")
   (org-journal-enable-agenda-integration t)
-  (org-journal-file-header "#+startup: content\n")
+  (org-journal-file-header
+   "#+startup: content\n#+SEQ_TODO: TODO(t) INPROGRESS(i) WAITING(w@) | DONE(d) CANCELED(c@)\n")
   (org-journal-find-file-fn #'find-file)
   :hook
   (org-journal-after-entry-create . my-org-journal-add-entry-id)

@@ -466,8 +466,22 @@ FORCE is the optional second argument of `make-frame-invisible'."
     (interactive)
     (my-consult--select-directory #'consult-find))
 
+  (defun my-consult-org-agenda--annotate (cand)
+    "Display Org TODO annotations at column 100 for agenda candidates."
+    (pcase-let ((`(,_level ,todo ,prio . ,_)
+                 (get-text-property 0 'consult-org--heading cand)))
+      (concat
+       #("   " 0 1 (display (space :align-to (+ left 100))))
+       todo
+       (and prio (format #(" [#%c]" 1 6 (face org-priority)) prio)))))
+
   :custom
   (consult-async-min-input 2)
+
+  :config
+  (consult-customize
+   consult-org-agenda
+   :annotate #'my-consult-org-agenda--annotate)
 
   :bind
   (("<C-tab>" . consult-buffer)

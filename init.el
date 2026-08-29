@@ -520,8 +520,9 @@ FORCE is the optional second argument of `make-frame-invisible'."
 (use-package org
   :ensure nil
   :defines (org-capture-templates org-refile-history)
-  :functions (org-agenda-files org-get-next-sibling org-id-new
-                               org-refile-get-location org-refile-get-targets)
+  :functions (org-agenda-files org-get-next-sibling org-id-get-create
+                               org-id-new org-refile-get-location
+                               org-refile-get-targets org-show-entry)
   :preface
   (defvar my-org-refile--history-validation-pending nil
     "Non-nil while the next refile target table should validate history.")
@@ -693,6 +694,10 @@ the first current target as the default.  Return TARGETS unchanged."
   :defer t
   :defines my-org-journal-map
   :preface
+  (defun my-org-journal-add-entry-id ()
+    "Add an Org ID to the newly created journal entry."
+    (org-id-get-create))
+
   (defun my-org-journal-fold-current-file (&rest _)
     "Fold older dates and show current date headings without their bodies."
     (when (and (derived-mode-p 'org-mode)
@@ -706,6 +711,17 @@ the first current target as the default.  Return TARGETS unchanged."
           (org-overview)
           (org-narrow-to-subtree)
           (org-content)))))
+
+  (defun my-org-journal-fold-current-file-and-show-entry (prefix &rest _)
+    "Fold older journal dates while leaving the new entry unfolded.
+When PREFIX is non-nil, keep the current date folded because no entry
+is created."
+    (my-org-journal-fold-current-file)
+    (unless prefix
+      (when (and (derived-mode-p 'org-mode)
+                 (org-journal-is-journal)
+                 (not (org-before-first-heading-p)))
+        (org-show-entry))))
   :init
   (define-prefix-command 'my-org-journal-map)
   :custom
@@ -718,17 +734,29 @@ the first current target as the default.  Return TARGETS unchanged."
   (org-journal-enable-agenda-integration t)
   (org-journal-file-header "#+startup: content\n")
   (org-journal-find-file-fn #'find-file)
+  :hook
+  (org-journal-after-entry-create . my-org-journal-add-entry-id)
   :bind
   (("C-c j" . my-org-journal-map)
    :map my-org-journal-map
    ("j" . org-journal-new-entry)
    ("o" . org-journal-open-current-journal-file))
   :config
-  ;; Apply the same visibility after opening or creating the current entry.
-  (dolist (command '(org-journal-new-entry
-                     org-journal-open-current-journal-file))
-    (unless (advice-member-p #'my-org-journal-fold-current-file command)
-      (advice-add command :after #'my-org-journal-fold-current-file))))
+  ;; Replace the former shared advice when this configuration is reloaded.
+  (advice-remove 'org-journal-new-entry
+                 #'my-org-journal-fold-current-file)
+
+  ;; Fold older dates after opening, but leave a newly created entry unfolded.
+  (unless (advice-member-p #'my-org-journal-fold-current-file-and-show-entry
+                           'org-journal-new-entry)
+    (advice-add 'org-journal-new-entry
+                :after
+                #'my-org-journal-fold-current-file-and-show-entry))
+  (unless (advice-member-p #'my-org-journal-fold-current-file
+                           'org-journal-open-current-journal-file)
+    (advice-add 'org-journal-open-current-journal-file
+                :after
+                #'my-org-journal-fold-current-file)))
 
 ;;; AI assistance
 

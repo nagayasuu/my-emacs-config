@@ -523,8 +523,14 @@ FORCE is the optional second argument of `make-frame-invisible'."
   :functions (org-agenda-files org-get-next-sibling org-id-new
                                org-refile-get-location
                                org-refile-get-targets org-show-entry
-                               org-fold-hide-drawer-all)
+                               org-fold-folded-p org-fold-hide-drawer-all
+                               org-fold-region org-list-get-item-end
+                               org-list-get-item-end-before-blank
+                               org-list-set-item-visibility
+                               org-list-struct org-at-item-p)
   :preface
+  (require 'cl-lib)
+
   (defvar my-org-refile--history-validation-pending nil
     "Non-nil while the next refile target table should validate history.")
 
@@ -609,6 +615,65 @@ the first current target as the default.  Return TARGETS unchanged."
     (when (derived-mode-p 'org-mode)
       (org-fold-hide-drawer-all)))
 
+  (defun my-org-list-item-fold-end (item struct)
+    "Return ITEM's fold end in STRUCT while preserving its final newline."
+    (let ((end (org-list-get-item-end item struct)))
+      (if (and (> end (point-min))
+               (eq (char-before end) ?\n))
+          (1- end)
+        end)))
+
+  (defun my-org-list-set-item-visibility-through-blank-lines
+      (function item struct view)
+    "Call FUNCTION for ITEM in STRUCT and include blank lines in VIEW."
+    (cl-letf (((symbol-function 'org-list-get-item-end-before-blank)
+               #'my-org-list-item-fold-end))
+      (funcall function item struct view)))
+
+  (defun my-org-show-inserted-list-item (inserted)
+    "Show a newly INSERTED list item and return INSERTED unchanged."
+    (when (and inserted (org-at-item-p))
+      (save-excursion
+        (beginning-of-line)
+        (let ((item (point)))
+          (org-list-set-item-visibility
+           item (org-list-struct) 'subtree))))
+    inserted)
+
+  (defun my-org-cycle-list-item-through-blank-lines (arg)
+    "Cycle an Org list item while including its trailing blank lines.
+When an item has text separated from its bullet by blank lines, include
+that text as well.  An item with only a separator before the next item
+folds that separator directly."
+    (interactive "P")
+    (if (and (not arg) (org-at-item-p))
+        (save-excursion
+          (beginning-of-line)
+          (let* ((item (point))
+                 (struct (org-list-struct))
+                 (line-end (line-end-position))
+                 (content-end
+                  (org-list-get-item-end-before-blank item struct))
+                 (item-end (org-list-get-item-end item struct))
+                 (fold-end (my-org-list-item-fold-end item struct)))
+            (if (and (= content-end line-end)
+                     ;; Require an actual blank line, not merely the
+                     ;; terminating newline of the item.
+                     (> item-end (1+ line-end)))
+                ;; The item contains only trailing blank lines.
+                (let ((folded (org-fold-folded-p line-end 'outline)))
+                  (org-fold-region line-end fold-end (not folded) 'outline)
+                  (setq org-cycle-subtree-status
+                        (if folded 'subtree 'folded))
+                  (org-unlogged-message
+                   (if folded "SUBTREE" "FOLDED")))
+              ;; Include blank lines occurring inside or after the item.
+              (cl-letf (((symbol-function
+                          'org-list-get-item-end-before-blank)
+                         #'my-org-list-item-fold-end))
+                (org-cycle arg)))))
+      (org-cycle arg)))
+
   :init
   (setq org-directory my-org-directory
         org-default-notes-file
@@ -651,7 +716,8 @@ the first current target as the default.  Return TARGETS unchanged."
    ("C-c a" . org-agenda)
    ("C-c c" . org-capture)
    :map org-mode-map
-   ("C-c e" . org-emphasize))
+   ("C-c e" . org-emphasize)
+   ([remap org-cycle] . my-org-cycle-list-item-through-blank-lines))
 
   :hook
   ;; Visually indent content according to its heading level.
@@ -660,6 +726,24 @@ the first current target as the default.  Return TARGETS unchanged."
   :config
   ;; Fold property drawers in the newly captured entry.
   (add-hook 'org-capture-mode-hook #'my-org-capture-fold-properties)
+
+  ;; Use the same blank-line folding boundary when Org folds list items
+  ;; indirectly while cycling a containing heading.
+  (with-eval-after-load 'org-list
+    (unless (advice-member-p
+             #'my-org-list-set-item-visibility-through-blank-lines
+             'org-list-set-item-visibility)
+      (advice-add
+       'org-list-set-item-visibility
+       :around
+       #'my-org-list-set-item-visibility-through-blank-lines))
+    ;; `org-list-write-struct' can copy an existing fold to a list item
+    ;; inserted with `M-RET'; reveal only that newly inserted item.
+    (unless (advice-member-p #'my-org-show-inserted-list-item
+                             'org-insert-item)
+      (advice-add 'org-insert-item
+                  :filter-return
+                  #'my-org-show-inserted-list-item)))
 
   ;; Prevent saved refile history from becoming a stale default when the
   ;; available journal target changes.

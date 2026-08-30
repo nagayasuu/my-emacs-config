@@ -537,6 +537,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 (defvar org-directory)
 (defvar org-refile-history)
+(defvar org-refile-targets)
 (defvar org-refile-use-outline-path)
 
 (defconst my-org-refile-excluded-directories
@@ -623,6 +624,17 @@ the first current target as the default.  Return TARGETS unchanged."
     (apply function arguments)))
 
 ;;;; Capture and archiving
+
+(defun my-org-capture-project-heading ()
+  "Move point to a selected top-level project heading."
+  (let ((org-refile-targets '((nil :level . 1)))
+        ;; Do not change the history used by regular refile commands.
+        (org-refile-history nil)
+        ;; Top-level targets do not need outline-path completion.
+        (org-refile-use-outline-path nil))
+    (goto-char
+     (nth 3
+          (org-refile-get-location "Project" (current-buffer))))))
 
 (defun my-org-capture-fold-properties ()
   "Fold property drawers after `org-capture'."
@@ -729,6 +741,10 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
         org-capture-templates
         '(("t" "Task" entry
            (file+headline org-default-notes-file "Tasks")
+           "* TODO %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
+           :empty-lines 1)
+          ("p" "Project task" entry
+           (file+function "projects.org" my-org-capture-project-heading)
            "* TODO %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
            :empty-lines 1)
           ("n" "Note" entry

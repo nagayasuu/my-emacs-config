@@ -3,15 +3,19 @@
 ;;; Commentary:
 
 ;; Personal Emacs configuration shared across supported platforms.
+;; Feature-specific constants and helpers are kept beside the settings
+;; that use them.
 
 ;;; Code:
 
-;;; Customize storage
+;;; Bootstrap
+
+;;;; Customize storage
 
 ;; Choose the Customize output file before package setup can save settings.
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
 
-;;; Package management
+;;;; Package management
 
 ;; Load Emacs' built-in package manager.
 (require 'package)
@@ -30,19 +34,7 @@
 (add-to-list 'package-pinned-packages
              '(gptel . "nongnu-devel"))
 
-;;; External variable declarations
-
-(defvar mini-frame-completions-frame)
-(defvar mini-frame-frame)
-(defvar org-cycle-subtree-status)
-(defvar org-directory)
-(defvar org-refile-history)
-(defvar org-refile-use-outline-path)
-(defvar pgtk-wait-for-event-timeout)
-
-;;; User definitions
-
-;;;; Shared paths
+;;; Shared paths
 
 (defconst my-org-directory
   (if (eq system-type 'windows-nt)
@@ -50,7 +42,9 @@
     (expand-file-name "~/Dropbox/org/"))
   "Root directory for Org files.")
 
-;;;; Platform integration
+;;; Platform integration
+
+;;;; Windows
 
 (defconst my-windows-exec-paths
   '("c:/msys64/ucrt64/bin"
@@ -68,6 +62,35 @@
             (mapconcat #'identity
                        (cons directory path-directories)
                        path-separator))))
+
+(when (eq system-type 'windows-nt)
+  ;; Use UTF-8 as the default coding system on Windows.
+  (set-language-environment "UTF-8")
+  (prefer-coding-system 'utf-8-unix)
+  (set-default-coding-systems 'utf-8-unix)
+  (setq locale-coding-system 'utf-8)
+
+  ;; Use Japanese names for weekdays and months.
+  (setq system-time-locale "Japanese_Japan.65001")
+
+  ;; Add MSYS2 tools to the executable search path, in the declared order.
+  (dolist (directory (reverse my-windows-exec-paths))
+    (my-prepend-to-exec-path directory))
+
+  ;; Fix Japanese search terms passed to MSYS2 commands on Japanese Windows.
+  (dolist (entry '(("[rR][gG]\\(?:\\.exe\\)?\\'"
+                    . (utf-8-dos . cp932-dos))
+                   ("[fF][iI][nN][dD]\\(?:\\.exe\\)?\\'"
+                    . (utf-8-dos . cp932-dos))))
+    (add-to-list 'process-coding-system-alist entry)))
+
+;;; Core Emacs
+
+;;;; Startup behavior
+
+(setq inhibit-startup-screen t
+      frame-title-format '("%b")
+      ring-bell-function #'ignore)
 
 ;;;; Appearance
 
@@ -113,6 +136,40 @@
                     tab-line-tab-current
                     tab-line-tab-inactive))
       (custom-theme-recalc-face face))))
+
+;; Cover both a regular startup frame and frames created by the daemon.
+(my-apply-default-font)
+(add-hook 'after-make-frame-functions #'my-apply-default-font)
+
+(menu-bar-mode -1)
+(scroll-bar-mode -1)
+(tool-bar-mode -1)
+
+(setq-default cursor-type 'bar)
+(blink-cursor-mode 1)
+
+;; Keep the Ef Light theme available as a disabled alternative.
+(use-package ef-themes
+  :ensure t
+  :disabled t
+  :config
+  (load-theme 'ef-light t))
+
+(use-package catppuccin-theme
+  :ensure t
+  :no-require t
+  :defines catppuccin-flavor
+  :functions catppuccin-color
+  :init
+  (setq catppuccin-flavor 'frappe)
+  (add-hook 'enable-theme-functions #'my-catppuccin-tab-line-faces)
+  :config
+  (load-theme 'catppuccin :no-confirm))
+
+;; Use a minimal mode line.
+(use-package simple-modeline
+  :ensure t
+  :hook (after-init . simple-modeline-mode))
 
 ;;;; Tab line
 
@@ -176,7 +233,76 @@
     (my-tab-line--highlight-close-button text tab-face)
     text))
 
-;;;; Session persistence
+(use-package nerd-icons
+  :ensure t)
+
+(use-package tab-line
+  :ensure nil
+  :functions (tab-line-force-update
+              tab-line-tab-name-format-default
+              tab-line-tabs-fixed-window-buffers)
+  :init
+  (setq tab-line-tabs-function #'tab-line-tabs-fixed-window-buffers
+        tab-line-new-button-show nil
+        tab-line-separator ""
+        tab-line-tab-name-function #'my-tab-line-tab-name)
+  (global-tab-line-mode 1)
+  :config
+  (setq tab-line-tab-name-format-function #'my-tab-line-tab-name-format
+        tab-line-close-button
+        (propertize "×"
+                    'face '(:foreground "#888888" :height 1.0)
+                    'keymap tab-line-tab-close-map
+                    'mouse-face `(:inherit tab-line-highlight
+                                  :foreground ,my-tab-line-close-hover-color)
+                    'help-echo my-tab-line-close-help-echo))
+  (set-face-attribute 'tab-line-tab-special nil
+                      :slant 'normal
+                      :weight 'normal))
+
+;;;; Scrolling
+
+(setq scroll-margin 0
+      scroll-conservatively 100000
+      scroll-preserve-screen-position t)
+
+(pixel-scroll-precision-mode 1)
+
+;;;; Editing behavior
+
+(delete-selection-mode 1)
+(electric-pair-mode 1)
+
+(setq kill-whole-line t
+      tab-always-indent 'complete)
+
+;; Remove trailing whitespace whenever a buffer is saved.
+(add-hook 'before-save-hook #'delete-trailing-whitespace)
+
+;; Provide context-aware commands for copying and marking text.
+(use-package easy-kill
+  :ensure t
+  :bind
+  (([remap kill-ring-save] . easy-kill)
+   ([remap mark-sexp] . easy-mark)))
+
+;;;; Files and session persistence
+
+;; Disabling auto-save also disables its crash-recovery data.
+(setq make-backup-files nil
+      auto-save-default nil)
+
+(use-package savehist
+  :ensure nil
+  :init
+  (savehist-mode 1))
+
+(use-package recentf
+  :ensure nil
+  :init
+  (recentf-mode 1)
+  :custom
+  (recentf-max-saved-items 200))
 
 (defun my-desktop-save-tab-line-buffer-order ()
   "Store each window's tab-line buffer order as writable names."
@@ -201,7 +327,25 @@
    'no-minibuffer t)
   (tab-line-force-update t))
 
-;;;; Minibuffer
+(use-package desktop
+  :ensure nil
+  :init
+  ;; Buffer objects are not writable in desktop files, so mirror their names
+  ;; in a dedicated window parameter that frameset can serialize.
+  (add-to-list 'window-persistent-parameters
+               '(my-tab-line-buffer-order . writable))
+  (add-hook 'desktop-save-hook #'my-desktop-save-tab-line-buffer-order)
+  (add-hook 'desktop-after-read-hook
+            #'my-desktop-restore-tab-line-buffer-order)
+  (desktop-save-mode 1))
+
+;;; Completion and navigation
+
+;;;; Minibuffer completion
+
+(defvar mini-frame-completions-frame)
+(defvar mini-frame-frame)
+(defvar pgtk-wait-for-event-timeout)
 
 (defconst my-mini-frame--pgtk-hide-timeout 0.02
   "Maximum PGTK event wait when hiding a mini-frame child frame.")
@@ -247,7 +391,60 @@ FORCE is the optional second argument of `make-frame-invisible'."
               (funcall hide target force))))
       (funcall hide frame force))))
 
-;;;; Consult
+;; Display the minibuffer in a child frame at the top of graphical frames.
+;; `mini-frame' falls back to the regular minibuffer on terminal frames, so
+;; keeping the mode enabled also supports GUI frames created by the daemon.
+(use-package mini-frame
+  :ensure t
+  :custom
+  (mini-frame-show-parameters #'my-mini-frame--show-parameters)
+  ;; Vertico displays candidates inside the minibuffer, so a second child
+  ;; frame for *Completions* only adds frame and focus management overhead.
+  (mini-frame-handle-completions nil)
+  ;; Keep the hidden child frame attached on PGTK/Wayland.  On Windows,
+  ;; detaching lets `mini-frame' recover when a hidden frame still appears
+  ;; visible to `frame-visible-p'.
+  (mini-frame-detach-on-hide (eq system-type 'windows-nt))
+  ;; Reuse the hidden child frame.  Deleting a focused PGTK child frame can
+  ;; leave its parent without keyboard focus on Emacs 30.
+  (mini-frame-delete-on-hide nil)
+  (mini-frame-standalone nil)
+  :config
+  ;; Remove earlier focus-recovery workarounds when this file is reevaluated.
+  (dolist (function '(my-mini-frame--restore-pgtk-parent-focus
+                      my-mini-frame--focus-pgtk-parent-before-hide
+                      my-mini-frame--clear-pgtk-focus-redirect
+                      my-mini-frame--hide-pgtk-child-frame))
+    (advice-remove 'make-frame-invisible function))
+  (advice-add 'make-frame-invisible
+              :around
+              #'my-mini-frame--hide-pgtk-child-frame)
+
+  (mini-frame-mode 1))
+
+;; Display minibuffer completion candidates vertically.
+(use-package vertico
+  :ensure t
+  :init
+  (vertico-mode 1))
+
+;; Match multiple input components in any order.
+(use-package orderless
+  :ensure t
+  :custom
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  ;; Use partial completion for file names and directory separators.
+  (completion-category-overrides
+   '((file (styles partial-completion)))))
+
+;; Add contextual annotations to completion candidates.
+(use-package marginalia
+  :ensure t
+  :init
+  (marginalia-mode 1))
+
+;;;; Navigation and search
 
 (defun my-consult--select-directory (command)
   "Run COMMAND from `my-org-directory' and prompt for a directory."
@@ -274,7 +471,73 @@ FORCE is the optional second argument of `make-frame-invisible'."
      todo
      (and prio (format #(" [#%c]" 1 6 (face org-priority)) prio)))))
 
-;;;; Org
+;; Provide enhanced navigation and selection commands.
+(use-package consult
+  :ensure t
+  :functions (consult--customize-put
+              consult-find
+              consult-org-agenda
+              consult-ripgrep)
+  :custom
+  (consult-async-min-input 2)
+
+  :config
+  (consult-customize
+   consult-org-agenda
+   :annotate #'my-consult-org-agenda--annotate)
+
+  :bind
+  (("<C-tab>" . consult-buffer)
+   ("C-c f" . my-consult-find-select-directory)
+   ("C-c g" . my-consult-ripgrep-select-directory)
+   ("C-c h" . consult-org-agenda)))
+
+;;;; In-buffer completion
+
+;; Keep the capitalization of dynamic abbreviations unchanged.
+(use-package dabbrev
+  :ensure nil
+  :defer t
+  :custom
+  (dabbrev-case-replace nil))
+
+;; Display completion-at-point candidates in a popup.
+(use-package corfu
+  :ensure t
+  :init
+  (global-corfu-mode 1)
+  :custom
+  ;; Start completion automatically after two characters and a short delay.
+  (corfu-auto t)
+  (corfu-auto-delay 0.2)
+  (corfu-auto-prefix 2)
+  ;; Continue from the first candidate after reaching the last one.
+  (corfu-cycle t))
+
+;; Add additional completion-at-point backends.
+(use-package cape
+  :ensure t
+  :init
+  ;; Complete words found in the current and other relevant buffers.
+  (add-hook 'completion-at-point-functions #'cape-dabbrev)
+  ;; Complete file-system paths.
+  (add-hook 'completion-at-point-functions #'cape-file))
+
+;;;; Command discovery
+
+;; Display available key continuations after a prefix key is pressed.
+(use-package which-key
+  :ensure nil
+  :init
+  (which-key-mode 1))
+
+;;; Org mode
+
+;;;; Paths and refiling
+
+(defvar org-directory)
+(defvar org-refile-history)
+(defvar org-refile-use-outline-path)
 
 (defconst my-org-refile-excluded-directories
   '("archive/" "journal/")
@@ -283,7 +546,6 @@ FORCE is the optional second argument of `make-frame-invisible'."
 (defvar my-org-refile--history-validation-pending nil
   "Non-nil while the next refile target table should validate history.")
 
-;; Paths, refile targets, and refile history.
 (defun my-org-journal-directory ()
   "Return the journal directory under `org-directory'."
   (expand-file-name "journal/" org-directory))
@@ -360,7 +622,8 @@ the first current target as the default.  Return TARGETS unchanged."
   (let ((my-org-refile--history-validation-pending t))
     (apply function arguments)))
 
-;; Capture and subtree commands.
+;;;; Capture and archiving
+
 (defun my-org-capture-fold-properties ()
   "Fold property drawers after `org-capture'."
   (when (derived-mode-p 'org-mode)
@@ -375,7 +638,10 @@ the first current target as the default.  Return TARGETS unchanged."
   (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
     (org-archive-all-done)))
 
-;; Plain-list folding.
+;;;; Plain-list folding
+
+(defvar org-cycle-subtree-status)
+
 (defun my-org-list-item-fold-end (item struct)
   "Return ITEM's fold end in STRUCT while preserving its final newline."
   (let ((end (org-list-get-item-end item struct)))
@@ -435,336 +701,11 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
               (org-cycle arg)))))
     (org-cycle arg)))
 
-;;;; Org journal
-
-(defun my-org-journal-add-entry-id ()
-  "Add metadata to the newly created journal entry."
-  (org-id-get-create)
-  (org-entry-put
-   (point)
-   "CREATED_AT"
-   (format-time-string (org-time-stamp-format t t))))
-
-(defun my-org-journal-new-entry-on-startup ()
-  "Create today's date heading and carry over TODO items if it is absent."
-  (require 'org-journal)
-  (unless (member (calendar-current-date)
-                  (org-journal--list-dates))
-    (org-journal-new-entry t)))
-
-(defun my-org-journal-fold-current-file (&rest _)
-  "Fold older dates and show current date headings without their bodies."
-  (when (and (derived-mode-p 'org-mode)
-             (org-journal-is-journal)
-             (not (org-before-first-heading-p)))
-    (save-excursion
-      (save-restriction
-        (widen)
-        (org-back-to-heading t)
-        (while (org-up-heading-safe))
-        (org-overview)
-        (org-narrow-to-subtree)
-        (org-content)))))
-
-(defun my-org-journal-fold-current-file-and-show-entry (prefix &rest _)
-  "Fold older journal dates while leaving the new entry unfolded.
-When PREFIX is non-nil, keep the current date folded because no entry
-is created."
-  (my-org-journal-fold-current-file)
-  (unless prefix
-    (when (and (derived-mode-p 'org-mode)
-               (org-journal-is-journal)
-               (not (org-before-first-heading-p)))
-      (org-fold-show-entry))))
-
-(define-prefix-command 'my-org-journal-map)
-
-;;; Platform integration
-
-;;;; Windows
-
-(when (eq system-type 'windows-nt)
-  ;; Use UTF-8 as the default coding system on Windows.
-  (set-language-environment "UTF-8")
-  (prefer-coding-system 'utf-8-unix)
-  (set-default-coding-systems 'utf-8-unix)
-  (setq locale-coding-system 'utf-8)
-
-  ;; Use Japanese names for weekdays and months.
-  (setq system-time-locale "Japanese_Japan.65001")
-
-  ;; Add MSYS2 tools to the executable search path, in the declared order.
-  (dolist (directory (reverse my-windows-exec-paths))
-    (my-prepend-to-exec-path directory))
-
-  ;; Fix Japanese search terms passed to MSYS2 commands on Japanese Windows.
-  (dolist (entry '(("[rR][gG]\\(?:\\.exe\\)?\\'"
-                    . (utf-8-dos . cp932-dos))
-                   ("[fF][iI][nN][dD]\\(?:\\.exe\\)?\\'"
-                    . (utf-8-dos . cp932-dos))))
-    (add-to-list 'process-coding-system-alist entry)))
-
-;;; Core Emacs
-
-;;;; Startup behavior
-
-(setq inhibit-startup-screen t
-      frame-title-format '("%b")
-      ring-bell-function #'ignore)
-
-;;;; Appearance
-
-;; Cover both a regular startup frame and frames created by the daemon.
-(my-apply-default-font)
-(add-hook 'after-make-frame-functions #'my-apply-default-font)
-
-(menu-bar-mode -1)
-(scroll-bar-mode -1)
-(tool-bar-mode -1)
-
-(setq-default cursor-type 'bar)
-(blink-cursor-mode 1)
-
-;; Keep the Ef Light theme available as a disabled alternative.
-(use-package ef-themes
-  :ensure t
-  :disabled t
-  :config
-  (load-theme 'ef-light t))
-
-(use-package catppuccin-theme
-  :ensure t
-  :no-require t
-  :defines catppuccin-flavor
-  :functions catppuccin-color
-  :init
-  (setq catppuccin-flavor 'frappe)
-  (add-hook 'enable-theme-functions #'my-catppuccin-tab-line-faces)
-  :config
-  (load-theme 'catppuccin :no-confirm))
-
-;; Use a minimal mode line.
-(use-package simple-modeline
-  :ensure t
-  :hook (after-init . simple-modeline-mode))
-
-;;;; Tab line
-
-(use-package nerd-icons
-  :ensure t)
-
-(use-package tab-line
-  :ensure nil
-  :functions (tab-line-force-update
-              tab-line-tab-name-format-default
-              tab-line-tabs-fixed-window-buffers)
-  :init
-  (setq tab-line-tabs-function #'tab-line-tabs-fixed-window-buffers
-        tab-line-new-button-show nil
-        tab-line-separator ""
-        tab-line-tab-name-function #'my-tab-line-tab-name)
-  (global-tab-line-mode 1)
-  :config
-  (setq tab-line-tab-name-format-function #'my-tab-line-tab-name-format
-        tab-line-close-button
-        (propertize "×"
-                    'face '(:foreground "#888888" :height 1.0)
-                    'keymap tab-line-tab-close-map
-                    'mouse-face `(:inherit tab-line-highlight
-                                  :foreground ,my-tab-line-close-hover-color)
-                    'help-echo my-tab-line-close-help-echo))
-  (set-face-attribute 'tab-line-tab-special nil
-                      :slant 'normal
-                      :weight 'normal))
-
-;;;; Scrolling
-
-(setq scroll-margin 0
-      scroll-conservatively 100000
-      scroll-preserve-screen-position t)
-
-(pixel-scroll-precision-mode 1)
-
-;;;; Editing behavior
-
-(delete-selection-mode 1)
-(electric-pair-mode 1)
-
-(setq kill-whole-line t
-      tab-always-indent 'complete)
-
-;; Remove trailing whitespace whenever a buffer is saved.
-(add-hook 'before-save-hook #'delete-trailing-whitespace)
-
-;; Provide context-aware commands for copying and marking text.
-(use-package easy-kill
-  :ensure t
-  :bind
-  (([remap kill-ring-save] . easy-kill)
-   ([remap mark-sexp] . easy-mark)))
-
-;;;; Files and session persistence
-
-;; Disabling auto-save also disables its crash-recovery data.
-(setq make-backup-files nil
-      auto-save-default nil)
-
-(use-package savehist
-  :ensure nil
-  :init
-  (savehist-mode 1))
-
-(use-package recentf
-  :ensure nil
-  :init
-  (recentf-mode 1)
-  :custom
-  (recentf-max-saved-items 200))
-
-(use-package desktop
-  :ensure nil
-  :init
-  ;; Buffer objects are not writable in desktop files, so mirror their names
-  ;; in a dedicated window parameter that frameset can serialize.
-  (add-to-list 'window-persistent-parameters
-               '(my-tab-line-buffer-order . writable))
-  (add-hook 'desktop-save-hook #'my-desktop-save-tab-line-buffer-order)
-  (add-hook 'desktop-after-read-hook
-            #'my-desktop-restore-tab-line-buffer-order)
-  (desktop-save-mode 1))
-
-;;; Completion and navigation
-
-;;;; Minibuffer completion
-
-;; Display the minibuffer in a child frame at the top of graphical frames.
-;; `mini-frame' falls back to the regular minibuffer on terminal frames, so
-;; keeping the mode enabled also supports GUI frames created by the daemon.
-(use-package mini-frame
-  :ensure t
-  :defines (mini-frame-frame
-            mini-frame-completions-frame
-            pgtk-wait-for-event-timeout)
-  :custom
-  (mini-frame-show-parameters #'my-mini-frame--show-parameters)
-  ;; Vertico displays candidates inside the minibuffer, so a second child
-  ;; frame for *Completions* only adds frame and focus management overhead.
-  (mini-frame-handle-completions nil)
-  ;; Keep the hidden child frame attached on PGTK/Wayland.  On Windows,
-  ;; detaching lets `mini-frame' recover when a hidden frame still appears
-  ;; visible to `frame-visible-p'.
-  (mini-frame-detach-on-hide (eq system-type 'windows-nt))
-  ;; Reuse the hidden child frame.  Deleting a focused PGTK child frame can
-  ;; leave its parent without keyboard focus on Emacs 30.
-  (mini-frame-delete-on-hide nil)
-  (mini-frame-standalone nil)
-  :config
-  ;; Remove earlier focus-recovery workarounds when this file is reevaluated.
-  (dolist (function '(my-mini-frame--restore-pgtk-parent-focus
-                      my-mini-frame--focus-pgtk-parent-before-hide
-                      my-mini-frame--clear-pgtk-focus-redirect
-                      my-mini-frame--hide-pgtk-child-frame))
-    (advice-remove 'make-frame-invisible function))
-  (advice-add 'make-frame-invisible
-              :around
-              #'my-mini-frame--hide-pgtk-child-frame)
-
-  (mini-frame-mode 1))
-
-;; Display minibuffer completion candidates vertically.
-(use-package vertico
-  :ensure t
-  :init
-  (vertico-mode 1))
-
-;; Match multiple input components in any order.
-(use-package orderless
-  :ensure t
-  :custom
-  (completion-styles '(orderless basic))
-  (completion-category-defaults nil)
-  ;; Use partial completion for file names and directory separators.
-  (completion-category-overrides
-   '((file (styles partial-completion)))))
-
-;; Add contextual annotations to completion candidates.
-(use-package marginalia
-  :ensure t
-  :init
-  (marginalia-mode 1))
-
-;;;; Navigation and search
-
-;; Provide enhanced navigation and selection commands.
-(use-package consult
-  :ensure t
-  :defines my-org-directory
-  :functions (consult--customize-put
-              consult-find
-              consult-org-agenda
-              consult-ripgrep)
-  :custom
-  (consult-async-min-input 2)
-
-  :config
-  (consult-customize
-   consult-org-agenda
-   :annotate #'my-consult-org-agenda--annotate)
-
-  :bind
-  (("<C-tab>" . consult-buffer)
-   ("C-c f" . my-consult-find-select-directory)
-   ("C-c g" . my-consult-ripgrep-select-directory)
-   ("C-c h" . consult-org-agenda)))
-
-;;;; In-buffer completion
-
-;; Keep the capitalization of dynamic abbreviations unchanged.
-(use-package dabbrev
-  :ensure nil
-  :defer t
-  :custom
-  (dabbrev-case-replace nil))
-
-;; Display completion-at-point candidates in a popup.
-(use-package corfu
-  :ensure t
-  :init
-  (global-corfu-mode 1)
-  :custom
-  ;; Start completion automatically after two characters and a short delay.
-  (corfu-auto t)
-  (corfu-auto-delay 0.2)
-  (corfu-auto-prefix 2)
-  ;; Continue from the first candidate after reaching the last one.
-  (corfu-cycle t))
-
-;; Add additional completion-at-point backends.
-(use-package cape
-  :ensure t
-  :init
-  ;; Complete words found in the current and other relevant buffers.
-  (add-hook 'completion-at-point-functions #'cape-dabbrev)
-  ;; Complete file-system paths.
-  (add-hook 'completion-at-point-functions #'cape-file))
-
-;;;; Command discovery
-
-;; Display available key continuations after a prefix key is pressed.
-(use-package which-key
-  :ensure nil
-  :init
-  (which-key-mode 1))
-
-;;; Org mode
-
-;;;; Core
+;;;; Core configuration
 
 (use-package org
   :ensure nil
-  :defines (org-capture-templates
-            org-refile-history
-            org-refile-use-outline-path)
+  :defines org-capture-templates
   :functions (org-agenda-files
               org-archive-all-done
               org-at-heading-p
@@ -910,6 +851,50 @@ is created."
   :hook (org-mode . org-appear-mode))
 
 ;;;; Journal
+
+(defun my-org-journal-add-entry-id ()
+  "Add metadata to the newly created journal entry."
+  (org-id-get-create)
+  (org-entry-put
+   (point)
+   "CREATED_AT"
+   (format-time-string (org-time-stamp-format t t))))
+
+(defun my-org-journal-new-entry-on-startup ()
+  "Create today's date heading and carry over TODO items if it is absent."
+  (require 'org-journal)
+  (unless (member (calendar-current-date)
+                  (org-journal--list-dates))
+    (org-journal-new-entry t)))
+
+(defun my-org-journal--at-heading-p ()
+  "Return non-nil when point is at a heading in an Org journal."
+  (and (derived-mode-p 'org-mode)
+       (org-journal-is-journal)
+       (not (org-before-first-heading-p))))
+
+(defun my-org-journal-fold-current-file (&rest _)
+  "Fold older dates and show current date headings without their bodies."
+  (when (my-org-journal--at-heading-p)
+    (save-excursion
+      (save-restriction
+        (widen)
+        (org-back-to-heading t)
+        (while (org-up-heading-safe))
+        (org-overview)
+        (org-narrow-to-subtree)
+        (org-content)))))
+
+(defun my-org-journal-fold-current-file-and-show-entry (prefix &rest _)
+  "Fold older journal dates while leaving the new entry unfolded.
+When PREFIX is non-nil, keep the current date folded because no entry
+is created."
+  (my-org-journal-fold-current-file)
+  (when (and (not prefix)
+             (my-org-journal--at-heading-p))
+    (org-fold-show-entry)))
+
+(define-prefix-command 'my-org-journal-map)
 
 ;; Maintain date-based journal entries under the Org directory.
 (use-package org-journal

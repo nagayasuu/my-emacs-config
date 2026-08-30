@@ -719,6 +719,7 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
   :ensure nil
   :defines org-capture-templates
   :functions (org-agenda-files
+              org-agenda-list
               org-archive-all-done
               org-at-heading-p
               org-at-item-p
@@ -963,6 +964,17 @@ is created."
   (advice-add 'org-journal-open-current-journal-file
               :after
               #'my-org-journal-fold-current-file))
+
+;;;; Startup agenda
+
+(defun my-org-agenda-show-today-on-startup ()
+  "Show today's Org agenda after startup."
+  (org-agenda-list nil nil 'day))
+
+;; Run after the startup journal hook so the agenda remains visible.
+(add-hook 'emacs-startup-hook
+          #'my-org-agenda-show-today-on-startup
+          t)
 
 ;;; AI assistance
 

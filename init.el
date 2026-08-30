@@ -768,6 +768,8 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
   ;; them to a fixed property-name width.
   (org-property-format "%s %s")
   (org-agenda-files (list my-org-directory))
+  ;; Display agenda views in the selected window instead of splitting it.
+  (org-agenda-window-setup 'current-window)
   (org-archive-location "archive/%s_archive::")
 
   ;; Refile to level 1 headings in regular files and the latest journal heading.

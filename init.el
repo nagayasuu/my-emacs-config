@@ -16,6 +16,9 @@
 ;; Load Emacs' built-in package manager.
 (require 'package)
 
+;; Provide Common Lisp forms used by personal Org commands.
+(require 'cl-lib)
+
 ;; Add MELPA after the existing package archives.
 (add-to-list 'package-archives
              '("melpa" . "https://melpa.org/packages/")
@@ -27,7 +30,44 @@
 (add-to-list 'package-pinned-packages
              '(gptel . "nongnu-devel"))
 
-;;; Personal settings
+;;; External variable declarations
+
+(defvar mini-frame-completions-frame)
+(defvar mini-frame-frame)
+(defvar org-cycle-subtree-status)
+(defvar org-directory)
+(defvar org-refile-history)
+(defvar org-refile-use-outline-path)
+(defvar pgtk-wait-for-event-timeout)
+
+;;; User definitions
+
+;;;; Shared paths
+
+(defconst my-org-directory
+  (if (eq system-type 'windows-nt)
+      (expand-file-name "Dropbox/org/" (getenv "USERPROFILE"))
+    (expand-file-name "~/Dropbox/org/"))
+  "Root directory for Org files.")
+
+;;;; Platform integration
+
+(defconst my-windows-exec-paths
+  '("c:/msys64/ucrt64/bin"
+    "c:/msys64/usr/bin")
+  "Directories prepended to the variable `exec-path' on Windows.")
+
+(defun my-prepend-to-exec-path (directory)
+  "Prepend DIRECTORY to variable `exec-path' and the PATH environment variable."
+  (add-to-list 'exec-path directory)
+  (let ((path-directories
+         (delete directory
+                 (split-string (or (getenv "PATH") "")
+                               path-separator t))))
+    (setenv "PATH"
+            (mapconcat #'identity
+                       (cons directory path-directories)
+                       path-separator))))
 
 ;;;; Appearance
 
@@ -46,38 +86,402 @@
 (defconst my-tab-line-close-help-echo "Close tab"
   "Help text used to identify the tab-line close button.")
 
-;;;; Windows
+(defun my-apply-default-font (&optional frame)
+  "Apply `my-default-font' to graphical FRAME."
+  (with-selected-frame (or frame (selected-frame))
+    (when (display-graphic-p)
+      (set-frame-font my-default-font))))
 
-(defconst my-windows-exec-paths
-  '("c:/msys64/ucrt64/bin"
-    "c:/msys64/usr/bin")
-  "Directories prepended to the variable `exec-path' on Windows.")
+(defun my-catppuccin-tab-line-faces (theme)
+  "Set contrasting tab-line faces when THEME is Catppuccin."
+  (when (eq theme 'catppuccin)
+    (custom-theme-set-faces
+     'catppuccin
+     `(tab-line-tab
+       ((t (:inherit tab-line
+            :foreground ,(catppuccin-color 'text)
+            :box (:line-width (-1 . ,my-tab-line-vertical-padding)
+                  :color ,(catppuccin-color 'base))))))
+     `(tab-line-tab-current
+       ((t (:inherit tab-line-tab))))
+     `(tab-line-tab-inactive
+       ((t (:foreground ,(catppuccin-color 'subtext0)
+            :background ,(catppuccin-color 'surface0)
+            :box (:line-width (-1 . ,my-tab-line-vertical-padding)
+                  :color ,(catppuccin-color 'surface0)))))))
+    (dolist (face '(tab-line-tab
+                    tab-line-tab-current
+                    tab-line-tab-inactive))
+      (custom-theme-recalc-face face))))
+
+;;;; Tab line
+
+(defun my-tab-line-tab-name (buffer &optional _buffers)
+  "Return BUFFER's name with an icon and display padding."
+  (let* ((file (buffer-file-name buffer))
+         (icon (copy-sequence
+                (if file
+                    (nerd-icons-icon-for-file file)
+                  (nerd-icons-icon-for-mode 'text-mode)))))
+    (when icon
+      ;; Save the icon face because the default tab formatter replaces it.
+      (put-text-property 0 (length icon)
+                         'my-tab-line-icon-face
+                         (get-text-property 0 'face icon)
+                         icon))
+    (concat " " icon (and icon " ") (buffer-name buffer) " ")))
+
+(defun my-tab-line--restore-icon-face (text)
+  "Restore the Nerd Font face saved in tab-line TEXT."
+  (when-let* ((icon-start
+               (text-property-not-all 0 (length text)
+                                      'my-tab-line-icon-face nil text))
+              (icon-face
+               (get-text-property icon-start
+                                  'my-tab-line-icon-face text)))
+    (let ((icon-end
+           (next-single-property-change
+            icon-start 'my-tab-line-icon-face text (length text))))
+      (add-face-text-property icon-start icon-end icon-face nil text)
+      (put-text-property icon-start icon-end 'mouse-face
+                         (get-text-property icon-start 'face text)
+                         text))))
+
+(defun my-tab-line--highlight-close-button (text tab-face)
+  "Highlight the close button in tab-line TEXT inheriting TAB-FACE."
+  (let ((close-start 0))
+    (while (and (< close-start (length text))
+                (not (equal (get-text-property close-start 'help-echo text)
+                            my-tab-line-close-help-echo)))
+      (setq close-start
+            (next-single-property-change
+             close-start 'help-echo text (length text))))
+    (when (< close-start (length text))
+      (add-text-properties
+       close-start
+       (next-single-property-change close-start 'help-echo text (length text))
+       `(mouse-face ((:foreground ,my-tab-line-close-hover-color)
+                     ,tab-face))
+       text))))
+
+(defun my-tab-line-tab-name-format (tab tabs)
+  "Format TAB among TABS without changing its background on hover."
+  (let* ((text (tab-line-tab-name-format-default tab tabs))
+         (tab-face (get-text-property 0 'face text)))
+    ;; The default formatter uses `tab-line-highlight' as the mouse face,
+    ;; which replaces the tab's own background while the pointer is over it.
+    (put-text-property 0 (length text) 'mouse-face tab-face text)
+    ;; Restore the Nerd Font family and color while inheriting the tab face.
+    (my-tab-line--restore-icon-face text)
+    (my-tab-line--highlight-close-button text tab-face)
+    text))
+
+;;;; Session persistence
+
+(defun my-desktop-save-tab-line-buffer-order ()
+  "Store each window's tab-line buffer order as writable names."
+  (walk-windows
+   (lambda (window)
+     (with-selected-window window
+       (set-window-parameter
+        window 'my-tab-line-buffer-order
+        (mapcar #'buffer-name
+                (tab-line-tabs-fixed-window-buffers)))))
+   'no-minibuffer t))
+
+(defun my-desktop-restore-tab-line-buffer-order ()
+  "Restore each window's tab-line buffer order from saved names."
+  (walk-windows
+   (lambda (window)
+     (when-let ((names (window-parameter
+                        window 'my-tab-line-buffer-order)))
+       (set-window-parameter
+        window 'tab-line-buffers
+        (delq nil (mapcar #'get-buffer names)))))
+   'no-minibuffer t)
+  (tab-line-force-update t))
+
+;;;; Minibuffer
+
+(defconst my-mini-frame--pgtk-hide-timeout 0.02
+  "Maximum PGTK event wait when hiding a mini-frame child frame.")
+
+(defun my-mini-frame--show-parameters ()
+  "Return frame parameters for the minibuffer child frame."
+  (append
+   `((top . 10)
+     (width . 0.7)
+     (left . 0.5)
+     (font . ,my-default-font))
+   ;; Emacs 30 PGTK can lose keyboard focus after hiding a focused child.
+   ;; Keep physical GTK focus in the parent; `mini-frame' redirects the
+   ;; parent's input events to this child while its minibuffer is active.
+   (when (eq (window-system (selected-frame)) 'pgtk)
+     '((no-accept-focus . t)))))
+
+(defun my-mini-frame--pgtk-child-frame-p (frame)
+  "Return non-nil when FRAME is a live PGTK mini-frame child frame."
+  (and (frame-live-p frame)
+       (eq (window-system frame) 'pgtk)
+       (or (eq frame mini-frame-frame)
+           (eq frame mini-frame-completions-frame))))
+
+(defun my-mini-frame--hide-pgtk-child-frame (hide &optional frame force)
+  "Call HIDE for FRAME with optimized PGTK mini-frame cleanup.
+FORCE is the optional second argument of `make-frame-invisible'."
+  (let ((target (or frame (selected-frame))))
+    (if (my-mini-frame--pgtk-child-frame-p target)
+        (progn
+          (when (eq target mini-frame-frame)
+            (let ((parent (frame-parent target)))
+              (when (frame-live-p parent)
+                (redirect-frame-focus parent nil))))
+          (when (frame-visible-p target)
+            ;; PGTK's hide path waits for the entire timeout even if no map
+            ;; event is pending.  Keep a short drain period for race safety.
+            (let ((pgtk-wait-for-event-timeout
+                   (if (floatp pgtk-wait-for-event-timeout)
+                       (min pgtk-wait-for-event-timeout
+                            my-mini-frame--pgtk-hide-timeout)
+                     pgtk-wait-for-event-timeout)))
+              (funcall hide target force))))
+      (funcall hide frame force))))
+
+;;;; Consult
+
+(defun my-consult--select-directory (command)
+  "Run COMMAND from `my-org-directory' and prompt for a directory."
+  (let ((default-directory my-org-directory)
+        (current-prefix-arg '(4)))
+    (call-interactively command)))
+
+(defun my-consult-ripgrep-select-directory ()
+  "Run `consult-ripgrep' and prompt for the search directory."
+  (interactive)
+  (my-consult--select-directory #'consult-ripgrep))
+
+(defun my-consult-find-select-directory ()
+  "Run `consult-find' and prompt for the search directory."
+  (interactive)
+  (my-consult--select-directory #'consult-find))
+
+(defun my-consult-org-agenda--annotate (cand)
+  "Display Org TODO annotations at column 100 for agenda candidate CAND."
+  (pcase-let ((`(,_level ,todo ,prio . ,_)
+               (get-text-property 0 'consult-org--heading cand)))
+    (concat
+     #("   " 0 1 (display (space :align-to (+ left 100))))
+     todo
+     (and prio (format #(" [#%c]" 1 6 (face org-priority)) prio)))))
 
 ;;;; Org
-
-(defconst my-org-directory
-  (if (eq system-type 'windows-nt)
-      (expand-file-name "Dropbox/org/" (getenv "USERPROFILE"))
-    (expand-file-name "~/Dropbox/org/"))
-  "Root directory for Org files.")
 
 (defconst my-org-refile-excluded-directories
   '("archive/" "journal/")
   "Directories under `org-directory' excluded from refile targets.")
 
+(defvar my-org-refile--history-validation-pending nil
+  "Non-nil while the next refile target table should validate history.")
+
+;; Paths, refile targets, and refile history.
+(defun my-org-journal-directory ()
+  "Return the journal directory under `org-directory'."
+  (expand-file-name "journal/" org-directory))
+
+(defun my-org-refile-files ()
+  "Return agenda files that can be used as refile targets."
+  (let ((excluded-directories
+         (mapcar (lambda (directory)
+                   (expand-file-name directory org-directory))
+                 my-org-refile-excluded-directories)))
+    (seq-remove
+     (lambda (file)
+       (seq-some
+        (lambda (directory)
+          (file-in-directory-p (expand-file-name file) directory))
+        excluded-directories))
+     (org-agenda-files))))
+
+(defun my-org-latest-journal-file ()
+  "Return the latest date-named journal file, or nil if none exists."
+  (let ((journal-directory (my-org-journal-directory)))
+    (when (file-directory-p journal-directory)
+      (seq-find
+       #'file-regular-p
+       (sort (directory-files
+              journal-directory t
+              (rx string-start
+                  (= 4 digit) "-" (= 2 digit) "-" (= 2 digit)
+                  ".org" string-end))
+             #'string>)))))
+
+(defun my-org-refile-target-verify ()
+  "Allow only the latest heading in the latest journal file."
+  (let ((latest-journal-file (my-org-latest-journal-file)))
+    (or (not (and buffer-file-name
+                  latest-journal-file
+                  (file-equal-p buffer-file-name latest-journal-file)))
+        (not (save-excursion
+               (org-get-next-sibling))))))
+
+(defun my-org-refile--ensure-valid-history (targets)
+  "Keep `org-refile-history' aligned with the current TARGETS.
+When no saved history entry is still a completion candidate, use
+the first current target as the default.  Return TARGETS unchanged."
+  (when my-org-refile--history-validation-pending
+    (setq my-org-refile--history-validation-pending nil)
+    (let* ((current-file
+            (buffer-file-name (buffer-base-buffer (current-buffer))))
+           (filename (and current-file (file-truename current-file)))
+           (path-suffix (if org-refile-use-outline-path "/" ""))
+           (target-names
+            (mapcar
+             (lambda (target)
+               (if (and
+                    (not (member org-refile-use-outline-path
+                                 '(file full-file-path title)))
+                    (not (equal filename
+                                (file-truename (nth 1 target)))))
+                   (concat (car target) path-suffix " ("
+                           (file-name-nondirectory (nth 1 target)) ")")
+                 (concat (car target) path-suffix)))
+             targets))
+           (valid-history
+            (seq-filter (lambda (entry)
+                          (member entry target-names))
+                        org-refile-history)))
+      (setq org-refile-history
+            (or valid-history
+                (and target-names (list (car target-names)))))))
+  targets)
+
+(defun my-org-refile--with-valid-history (function &rest arguments)
+  "Call FUNCTION with ARGUMENTS while arranging to validate refile history."
+  (let ((my-org-refile--history-validation-pending t))
+    (apply function arguments)))
+
+;; Capture and subtree commands.
+(defun my-org-capture-fold-properties ()
+  "Fold property drawers after `org-capture'."
+  (when (derived-mode-p 'org-mode)
+    (org-fold-hide-drawer-all)))
+
+(defun my-org-archive-subtrees-without-open-todo ()
+  "Archive direct child subtrees with no open TODO items without prompting."
+  (interactive)
+  (unless (org-at-heading-p)
+    (user-error "Point must be on an Org heading"))
+  (require 'org-archive)
+  (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+    (org-archive-all-done)))
+
+;; Plain-list folding.
+(defun my-org-list-item-fold-end (item struct)
+  "Return ITEM's fold end in STRUCT while preserving its final newline."
+  (let ((end (org-list-get-item-end item struct)))
+    (if (and (> end (point-min))
+             (eq (char-before end) ?\n))
+        (1- end)
+      end)))
+
+(defun my-org-list-set-item-visibility-through-blank-lines
+    (function item struct view)
+  "Call FUNCTION for ITEM in STRUCT and include blank lines in VIEW."
+  (cl-letf (((symbol-function 'org-list-get-item-end-before-blank)
+             #'my-org-list-item-fold-end))
+    (funcall function item struct view)))
+
+(defun my-org-show-inserted-list-item (inserted)
+  "Show a newly INSERTED list item and return INSERTED unchanged."
+  (when (and inserted (org-at-item-p))
+    (save-excursion
+      (beginning-of-line)
+      (let ((item (point)))
+        (org-list-set-item-visibility
+         item (org-list-struct) 'subtree))))
+  inserted)
+
+(defun my-org-cycle-list-item-through-blank-lines (arg)
+  "Cycle an Org list item while including its trailing blank lines.
+When an item has text separated from its bullet by blank lines, include
+that text as well.  An item with only a separator before the next item
+folds that separator directly.  With prefix ARG, use regular Org cycling."
+  (interactive "P")
+  (if (and (not arg) (org-at-item-p))
+      (save-excursion
+        (beginning-of-line)
+        (let* ((item (point))
+               (struct (org-list-struct))
+               (line-end (line-end-position))
+               (content-end
+                (org-list-get-item-end-before-blank item struct))
+               (item-end (org-list-get-item-end item struct))
+               (fold-end (my-org-list-item-fold-end item struct)))
+          (if (and (= content-end line-end)
+                   ;; Require an actual blank line, not merely the
+                   ;; terminating newline of the item.
+                   (> item-end (1+ line-end)))
+              ;; The item contains only trailing blank lines.
+              (let ((folded (org-fold-folded-p line-end 'outline)))
+                (org-fold-region line-end fold-end (not folded) 'outline)
+                (setq org-cycle-subtree-status
+                      (if folded 'subtree 'folded))
+                (org-unlogged-message
+                 (if folded "SUBTREE" "FOLDED")))
+            ;; Include blank lines occurring inside or after the item.
+            (cl-letf (((symbol-function
+                        'org-list-get-item-end-before-blank)
+                       #'my-org-list-item-fold-end))
+              (org-cycle arg)))))
+    (org-cycle arg)))
+
+;;;; Org journal
+
+(defun my-org-journal-add-entry-id ()
+  "Add metadata to the newly created journal entry."
+  (org-id-get-create)
+  (org-entry-put
+   (point)
+   "CREATED_AT"
+   (format-time-string (org-time-stamp-format t t))))
+
+(defun my-org-journal-new-entry-on-startup ()
+  "Create today's date heading and carry over TODO items if it is absent."
+  (require 'org-journal)
+  (unless (member (calendar-current-date)
+                  (org-journal--list-dates))
+    (org-journal-new-entry t)))
+
+(defun my-org-journal-fold-current-file (&rest _)
+  "Fold older dates and show current date headings without their bodies."
+  (when (and (derived-mode-p 'org-mode)
+             (org-journal-is-journal)
+             (not (org-before-first-heading-p)))
+    (save-excursion
+      (save-restriction
+        (widen)
+        (org-back-to-heading t)
+        (while (org-up-heading-safe))
+        (org-overview)
+        (org-narrow-to-subtree)
+        (org-content)))))
+
+(defun my-org-journal-fold-current-file-and-show-entry (prefix &rest _)
+  "Fold older journal dates while leaving the new entry unfolded.
+When PREFIX is non-nil, keep the current date folded because no entry
+is created."
+  (my-org-journal-fold-current-file)
+  (unless prefix
+    (when (and (derived-mode-p 'org-mode)
+               (org-journal-is-journal)
+               (not (org-before-first-heading-p)))
+      (org-fold-show-entry))))
+
+(define-prefix-command 'my-org-journal-map)
+
 ;;; Platform integration
 
-(defun my-prepend-to-exec-path (directory)
-  "Prepend DIRECTORY to variable `exec-path' and the PATH environment variable."
-  (add-to-list 'exec-path directory)
-  (let ((path-directories
-         (delete directory
-                 (split-string (or (getenv "PATH") "")
-                               path-separator t))))
-    (setenv "PATH"
-            (mapconcat #'identity
-                       (cons directory path-directories)
-                       path-separator))))
+;;;; Windows
 
 (when (eq system-type 'windows-nt)
   ;; Use UTF-8 as the default coding system on Windows.
@@ -110,12 +514,6 @@
 
 ;;;; Appearance
 
-(defun my-apply-default-font (&optional frame)
-  "Apply `my-default-font' to graphical FRAME."
-  (with-selected-frame (or frame (selected-frame))
-    (when (display-graphic-p)
-      (set-frame-font my-default-font))))
-
 ;; Cover both a regular startup frame and frames created by the daemon.
 (my-apply-default-font)
 (add-hook 'after-make-frame-functions #'my-apply-default-font)
@@ -139,28 +537,6 @@
   :no-require t
   :defines catppuccin-flavor
   :functions catppuccin-color
-  :preface
-  (defun my-catppuccin-tab-line-faces (theme)
-    "Set contrasting tab-line faces when THEME is Catppuccin."
-    (when (eq theme 'catppuccin)
-      (custom-theme-set-faces
-       'catppuccin
-       `(tab-line-tab
-         ((t (:inherit tab-line
-              :foreground ,(catppuccin-color 'text)
-              :box (:line-width (-1 . ,my-tab-line-vertical-padding)
-                    :color ,(catppuccin-color 'base))))))
-       `(tab-line-tab-current
-         ((t (:inherit tab-line-tab))))
-       `(tab-line-tab-inactive
-         ((t (:foreground ,(catppuccin-color 'subtext0)
-              :background ,(catppuccin-color 'surface0)
-              :box (:line-width (-1 . ,my-tab-line-vertical-padding)
-                    :color ,(catppuccin-color 'surface0)))))))
-      (dolist (face '(tab-line-tab
-                      tab-line-tab-current
-                      tab-line-tab-inactive))
-        (custom-theme-recalc-face face))))
   :init
   (setq catppuccin-flavor 'frappe)
   (add-hook 'enable-theme-functions #'my-catppuccin-tab-line-faces)
@@ -182,66 +558,6 @@
   :functions (tab-line-force-update
               tab-line-tab-name-format-default
               tab-line-tabs-fixed-window-buffers)
-  :preface
-  (defun my-tab-line-tab-name (buffer &optional _buffers)
-    "Return BUFFER's name with an icon and display padding."
-    (let* ((file (buffer-file-name buffer))
-           (icon (copy-sequence
-                  (if file
-                      (nerd-icons-icon-for-file file)
-                    (nerd-icons-icon-for-mode 'text-mode)))))
-      (when icon
-        ;; Save the icon face because the default tab formatter replaces it.
-        (put-text-property 0 (length icon)
-                           'my-tab-line-icon-face
-                           (get-text-property 0 'face icon)
-                           icon))
-      (concat " " icon (and icon " ") (buffer-name buffer) " ")))
-
-  (defun my-tab-line--restore-icon-face (text)
-    "Restore the Nerd Font face saved in tab-line TEXT."
-    (when-let* ((icon-start
-                 (text-property-not-all 0 (length text)
-                                        'my-tab-line-icon-face nil text))
-                (icon-face
-                 (get-text-property icon-start
-                                    'my-tab-line-icon-face text)))
-      (let ((icon-end
-             (next-single-property-change
-              icon-start 'my-tab-line-icon-face text (length text))))
-        (add-face-text-property icon-start icon-end icon-face nil text)
-        (put-text-property icon-start icon-end 'mouse-face
-                           (get-text-property icon-start 'face text)
-                           text))))
-
-  (defun my-tab-line--highlight-close-button (text tab-face)
-    "Highlight the close button in tab-line TEXT inheriting TAB-FACE."
-    (let ((close-start 0))
-      (while (and (< close-start (length text))
-                  (not (equal (get-text-property close-start 'help-echo text)
-                              my-tab-line-close-help-echo)))
-        (setq close-start
-              (next-single-property-change
-               close-start 'help-echo text (length text))))
-      (when (< close-start (length text))
-        (add-text-properties
-         close-start
-         (next-single-property-change close-start 'help-echo text (length text))
-         `(mouse-face ((:foreground ,my-tab-line-close-hover-color)
-                       ,tab-face))
-         text))))
-
-  (defun my-tab-line-tab-name-format (tab tabs)
-    "Format TAB among TABS without changing its background on hover."
-    (let* ((text (tab-line-tab-name-format-default tab tabs))
-           (tab-face (get-text-property 0 'face text)))
-      ;; The default formatter uses `tab-line-highlight' as the mouse face,
-      ;; which replaces the tab's own background while the pointer is over it.
-      (put-text-property 0 (length text) 'mouse-face tab-face text)
-      ;; Restore the Nerd Font family and color while inheriting the tab face.
-      (my-tab-line--restore-icon-face text)
-      (my-tab-line--highlight-close-button text tab-face)
-      text))
   :init
   (setq tab-line-tabs-function #'tab-line-tabs-fixed-window-buffers
         tab-line-new-button-show nil
@@ -307,29 +623,6 @@
 
 (use-package desktop
   :ensure nil
-  :preface
-  (defun my-desktop-save-tab-line-buffer-order ()
-    "Store each window's tab-line buffer order as writable names."
-    (walk-windows
-     (lambda (window)
-       (with-selected-window window
-         (set-window-parameter
-          window 'my-tab-line-buffer-order
-          (mapcar #'buffer-name
-                  (tab-line-tabs-fixed-window-buffers)))))
-     'no-minibuffer t))
-
-  (defun my-desktop-restore-tab-line-buffer-order ()
-    "Restore each window's tab-line buffer order from saved names."
-    (walk-windows
-     (lambda (window)
-       (when-let ((names (window-parameter
-                          window 'my-tab-line-buffer-order)))
-         (set-window-parameter
-          window 'tab-line-buffers
-          (delq nil (mapcar #'get-buffer names)))))
-     'no-minibuffer t)
-    (tab-line-force-update t))
   :init
   ;; Buffer objects are not writable in desktop files, so mirror their names
   ;; in a dedicated window parameter that frameset can serialize.
@@ -352,50 +645,6 @@
   :defines (mini-frame-frame
             mini-frame-completions-frame
             pgtk-wait-for-event-timeout)
-  :preface
-  (defconst my-mini-frame--pgtk-hide-timeout 0.02
-    "Maximum PGTK event wait when hiding a mini-frame child frame.")
-
-  (defun my-mini-frame--show-parameters ()
-    "Return frame parameters for the minibuffer child frame."
-    (append
-     `((top . 10)
-       (width . 0.7)
-       (left . 0.5)
-       (font . ,my-default-font))
-     ;; Emacs 30 PGTK can lose keyboard focus after hiding a focused child.
-     ;; Keep physical GTK focus in the parent; `mini-frame' redirects the
-     ;; parent's input events to this child while its minibuffer is active.
-     (when (eq (window-system (selected-frame)) 'pgtk)
-       '((no-accept-focus . t)))))
-
-  (defun my-mini-frame--pgtk-child-frame-p (frame)
-    "Return non-nil when FRAME is a live PGTK mini-frame child frame."
-    (and (frame-live-p frame)
-         (eq (window-system frame) 'pgtk)
-         (or (eq frame mini-frame-frame)
-             (eq frame mini-frame-completions-frame))))
-
-  (defun my-mini-frame--hide-pgtk-child-frame (hide &optional frame force)
-    "Call HIDE for FRAME with optimized PGTK mini-frame cleanup.
-FORCE is the optional second argument of `make-frame-invisible'."
-    (let ((target (or frame (selected-frame))))
-      (if (my-mini-frame--pgtk-child-frame-p target)
-          (progn
-            (when (eq target mini-frame-frame)
-              (let ((parent (frame-parent target)))
-                (when (frame-live-p parent)
-                  (redirect-frame-focus parent nil))))
-            (when (frame-visible-p target)
-              ;; PGTK's hide path waits for the entire timeout even if no map
-              ;; event is pending.  Keep a short drain period for race safety.
-              (let ((pgtk-wait-for-event-timeout
-                     (if (floatp pgtk-wait-for-event-timeout)
-                         (min pgtk-wait-for-event-timeout
-                              my-mini-frame--pgtk-hide-timeout)
-                       pgtk-wait-for-event-timeout)))
-                (funcall hide target force))))
-        (funcall hide frame force))))
   :custom
   (mini-frame-show-parameters #'my-mini-frame--show-parameters)
   ;; Vertico displays candidates inside the minibuffer, so a second child
@@ -449,32 +698,11 @@ FORCE is the optional second argument of `make-frame-invisible'."
 ;; Provide enhanced navigation and selection commands.
 (use-package consult
   :ensure t
-  :preface
-  (defun my-consult--select-directory (command)
-    "Run COMMAND from `my-org-directory' and prompt for a directory."
-    (let ((default-directory my-org-directory)
-          (current-prefix-arg '(4)))
-      (call-interactively command)))
-
-  (defun my-consult-ripgrep-select-directory ()
-    "Run `consult-ripgrep' and prompt for the search directory."
-    (interactive)
-    (my-consult--select-directory #'consult-ripgrep))
-
-  (defun my-consult-find-select-directory ()
-    "Run `consult-find' and prompt for the search directory."
-    (interactive)
-    (my-consult--select-directory #'consult-find))
-
-  (defun my-consult-org-agenda--annotate (cand)
-    "Display Org TODO annotations at column 100 for agenda candidates."
-    (pcase-let ((`(,_level ,todo ,prio . ,_)
-                 (get-text-property 0 'consult-org--heading cand)))
-      (concat
-       #("   " 0 1 (display (space :align-to (+ left 100))))
-       todo
-       (and prio (format #(" [#%c]" 1 6 (face org-priority)) prio)))))
-
+  :defines my-org-directory
+  :functions (consult--customize-put
+              consult-find
+              consult-org-agenda
+              consult-ripgrep)
   :custom
   (consult-async-min-input 2)
 
@@ -502,7 +730,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
 (use-package corfu
   :ensure t
   :init
-  (global-corfu-mode)
+  (global-corfu-mode 1)
   :custom
   ;; Start completion automatically after two characters and a short delay.
   (corfu-auto t)
@@ -534,171 +762,25 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 (use-package org
   :ensure nil
-  :defines (org-capture-templates org-refile-history)
-  :functions (org-agenda-files org-archive-all-done
-                               org-get-next-sibling org-id-new
-                               org-refile-get-location
-                               org-refile-get-targets org-show-entry
-                               org-fold-folded-p org-fold-hide-drawer-all
-                               org-fold-region org-list-get-item-end
-                               org-list-get-item-end-before-blank
-                               org-list-set-item-visibility
-                               org-list-struct org-at-item-p)
-  :preface
-  (require 'cl-lib)
-
-  (defvar my-org-refile--history-validation-pending nil
-    "Non-nil while the next refile target table should validate history.")
-
-  (defun my-org-journal-directory ()
-    "Return the journal directory under `org-directory'."
-    (expand-file-name "journal/" org-directory))
-
-  (defun my-org-refile-files ()
-    "Return agenda files that can be used as refile targets."
-    (let ((excluded-directories
-           (mapcar (lambda (directory)
-                     (expand-file-name directory org-directory))
-                   my-org-refile-excluded-directories)))
-      (seq-remove
-       (lambda (file)
-         (seq-some
-          (lambda (directory)
-            (file-in-directory-p (expand-file-name file) directory))
-          excluded-directories))
-       (org-agenda-files))))
-
-  (defun my-org-latest-journal-file ()
-    "Return the latest date-named journal file, or nil if none exists."
-    (let ((journal-directory (my-org-journal-directory)))
-      (when (file-directory-p journal-directory)
-        (seq-find
-         #'file-regular-p
-         (sort (directory-files
-                journal-directory t
-                (rx string-start
-                    (= 4 digit) "-" (= 2 digit) "-" (= 2 digit)
-                    ".org" string-end))
-               #'string>)))))
-
-  (defun my-org-archive-subtrees-without-open-todo ()
-    "Archive direct child subtrees with no open TODO items without prompting."
-    (interactive)
-    (unless (org-at-heading-p)
-      (user-error "Point must be on an Org heading"))
-    (require 'org-archive)
-    (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
-      (org-archive-all-done)))
-
-  (defun my-org-refile-target-verify ()
-    "Allow only the latest heading in the latest journal file."
-    (let ((latest-journal-file (my-org-latest-journal-file)))
-      (or (not (and buffer-file-name
-                    latest-journal-file
-                    (file-equal-p buffer-file-name latest-journal-file)))
-          (not (save-excursion
-                 (org-get-next-sibling))))))
-
-  (defun my-org-refile--ensure-valid-history (targets)
-    "Keep `org-refile-history' aligned with the current TARGETS.
-When no saved history entry is still a completion candidate, use
-the first current target as the default.  Return TARGETS unchanged."
-    (when my-org-refile--history-validation-pending
-      (setq my-org-refile--history-validation-pending nil)
-      (let* ((current-file
-              (buffer-file-name (buffer-base-buffer (current-buffer))))
-             (filename (and current-file (file-truename current-file)))
-             (path-suffix (if org-refile-use-outline-path "/" ""))
-             (target-names
-              (mapcar
-               (lambda (target)
-                 (if (and
-                      (not (member org-refile-use-outline-path
-                                   '(file full-file-path title)))
-                      (not (equal filename
-                                  (file-truename (nth 1 target)))))
-                     (concat (car target) path-suffix " ("
-                             (file-name-nondirectory (nth 1 target)) ")")
-                   (concat (car target) path-suffix)))
-               targets))
-             (valid-history
-              (seq-filter (lambda (entry)
-                            (member entry target-names))
-                          org-refile-history)))
-        (setq org-refile-history
-              (or valid-history
-                  (and target-names (list (car target-names)))))))
-    targets)
-
-  (defun my-org-refile--with-valid-history (function &rest arguments)
-    "Call FUNCTION while arranging to validate refile history."
-    (let ((my-org-refile--history-validation-pending t))
-      (apply function arguments)))
-
-  (defun my-org-capture-fold-properties ()
-    "Fold property drawers after `org-capture'."
-    (when (derived-mode-p 'org-mode)
-      (org-fold-hide-drawer-all)))
-
-  (defun my-org-list-item-fold-end (item struct)
-    "Return ITEM's fold end in STRUCT while preserving its final newline."
-    (let ((end (org-list-get-item-end item struct)))
-      (if (and (> end (point-min))
-               (eq (char-before end) ?\n))
-          (1- end)
-        end)))
-
-  (defun my-org-list-set-item-visibility-through-blank-lines
-      (function item struct view)
-    "Call FUNCTION for ITEM in STRUCT and include blank lines in VIEW."
-    (cl-letf (((symbol-function 'org-list-get-item-end-before-blank)
-               #'my-org-list-item-fold-end))
-      (funcall function item struct view)))
-
-  (defun my-org-show-inserted-list-item (inserted)
-    "Show a newly INSERTED list item and return INSERTED unchanged."
-    (when (and inserted (org-at-item-p))
-      (save-excursion
-        (beginning-of-line)
-        (let ((item (point)))
-          (org-list-set-item-visibility
-           item (org-list-struct) 'subtree))))
-    inserted)
-
-  (defun my-org-cycle-list-item-through-blank-lines (arg)
-    "Cycle an Org list item while including its trailing blank lines.
-When an item has text separated from its bullet by blank lines, include
-that text as well.  An item with only a separator before the next item
-folds that separator directly."
-    (interactive "P")
-    (if (and (not arg) (org-at-item-p))
-        (save-excursion
-          (beginning-of-line)
-          (let* ((item (point))
-                 (struct (org-list-struct))
-                 (line-end (line-end-position))
-                 (content-end
-                  (org-list-get-item-end-before-blank item struct))
-                 (item-end (org-list-get-item-end item struct))
-                 (fold-end (my-org-list-item-fold-end item struct)))
-            (if (and (= content-end line-end)
-                     ;; Require an actual blank line, not merely the
-                     ;; terminating newline of the item.
-                     (> item-end (1+ line-end)))
-                ;; The item contains only trailing blank lines.
-                (let ((folded (org-fold-folded-p line-end 'outline)))
-                  (org-fold-region line-end fold-end (not folded) 'outline)
-                  (setq org-cycle-subtree-status
-                        (if folded 'subtree 'folded))
-                  (org-unlogged-message
-                   (if folded "SUBTREE" "FOLDED")))
-              ;; Include blank lines occurring inside or after the item.
-              (cl-letf (((symbol-function
-                          'org-list-get-item-end-before-blank)
-                         #'my-org-list-item-fold-end))
-                (org-cycle arg)))))
-      (org-cycle arg)))
-
+  :defines (org-capture-templates
+            org-refile-history
+            org-refile-use-outline-path)
+  :functions (org-agenda-files
+              org-archive-all-done
+              org-at-heading-p
+              org-at-item-p
+              org-fold-folded-p
+              org-fold-hide-drawer-all
+              org-fold-region
+              org-get-next-sibling
+              org-id-new
+              org-list-get-item-end
+              org-list-get-item-end-before-blank
+              org-list-set-item-visibility
+              org-list-struct
+              org-refile-get-location
+              org-refile-get-targets
+              org-unlogged-message)
   :init
   (setq org-directory my-org-directory
         org-default-notes-file
@@ -715,6 +797,14 @@ folds that separator directly."
 
   :custom
   ;; Workflow and storage.
+  (org-todo-keywords
+   '((sequence
+      "TODO(t)"
+      "INPROGRESS(i)"
+      "WAITING(w@)"
+      "|"
+      "DONE(d)"
+      "CANCELED(c@)")))
   (org-log-done t)
   (org-element-use-cache nil)
   ;; Keep property values separated by a single space instead of aligning
@@ -737,9 +827,9 @@ folds that separator directly."
   (org-cycle-include-plain-lists 'integrate)
 
   :bind
-  (("C-c l" . org-store-link)
-   ("C-c a" . org-agenda)
+  (("C-c a" . org-agenda)
    ("C-c c" . org-capture)
+   ("C-c l" . org-store-link)
    :map org-mode-map
    ("C-c A" . my-org-archive-subtrees-without-open-todo)
    ("C-c e" . org-emphasize)
@@ -756,34 +846,25 @@ folds that separator directly."
   ;; Use the same blank-line folding boundary when Org folds list items
   ;; indirectly while cycling a containing heading.
   (with-eval-after-load 'org-list
-    (unless (advice-member-p
-             #'my-org-list-set-item-visibility-through-blank-lines
-             'org-list-set-item-visibility)
-      (advice-add
-       'org-list-set-item-visibility
-       :around
-       #'my-org-list-set-item-visibility-through-blank-lines))
+    (advice-add
+     'org-list-set-item-visibility
+     :around
+     #'my-org-list-set-item-visibility-through-blank-lines)
     ;; `org-list-write-struct' can copy an existing fold to a list item
     ;; inserted with `M-RET'; reveal only that newly inserted item.
-    (unless (advice-member-p #'my-org-show-inserted-list-item
-                             'org-insert-item)
-      (advice-add 'org-insert-item
-                  :filter-return
-                  #'my-org-show-inserted-list-item)))
+    (advice-add 'org-insert-item
+                :filter-return
+                #'my-org-show-inserted-list-item))
 
   ;; Prevent saved refile history from becoming a stale default when the
   ;; available journal target changes.
   (with-eval-after-load 'org-refile
-    (unless (advice-member-p #'my-org-refile--with-valid-history
-                             'org-refile-get-location)
-      (advice-add 'org-refile-get-location
-                  :around
-                  #'my-org-refile--with-valid-history))
-    (unless (advice-member-p #'my-org-refile--ensure-valid-history
-                             'org-refile-get-targets)
-      (advice-add 'org-refile-get-targets
-                  :filter-return
-                  #'my-org-refile--ensure-valid-history)))
+    (advice-add 'org-refile-get-location
+                :around
+                #'my-org-refile--with-valid-history)
+    (advice-add 'org-refile-get-targets
+                :filter-return
+                #'my-org-refile--ensure-valid-history))
 
   (org-babel-do-load-languages
    'org-babel-load-languages
@@ -835,49 +916,19 @@ folds that separator directly."
   :ensure t
   :defer t
   :defines my-org-journal-map
-  :functions org-journal--list-dates
-  :preface
-  (defun my-org-journal-add-entry-id ()
-    "Add metadata to the newly created journal entry."
-    (org-id-get-create)
-    (org-entry-put
-     (point)
-     "CREATED_AT"
-     (format-time-string (org-time-stamp-format t t))))
-
-  (defun my-org-journal-new-entry-on-startup ()
-    "Create today's date heading and carry over TODO items if it is absent."
-    (require 'org-journal)
-    (unless (member (calendar-current-date)
-                    (org-journal--list-dates))
-      (org-journal-new-entry t)))
-
-  (defun my-org-journal-fold-current-file (&rest _)
-    "Fold older dates and show current date headings without their bodies."
-    (when (and (derived-mode-p 'org-mode)
-               (org-journal-is-journal)
-               (not (org-before-first-heading-p)))
-      (save-excursion
-        (save-restriction
-          (widen)
-          (org-back-to-heading t)
-          (while (org-up-heading-safe))
-          (org-overview)
-          (org-narrow-to-subtree)
-          (org-content)))))
-
-  (defun my-org-journal-fold-current-file-and-show-entry (prefix &rest _)
-    "Fold older journal dates while leaving the new entry unfolded.
-When PREFIX is non-nil, keep the current date folded because no entry
-is created."
-    (my-org-journal-fold-current-file)
-    (unless prefix
-      (when (and (derived-mode-p 'org-mode)
-                 (org-journal-is-journal)
-                 (not (org-before-first-heading-p)))
-        (org-show-entry))))
+  :functions (calendar-current-date
+              org-back-to-heading
+              org-before-first-heading-p
+              org-content
+              org-entry-put
+              org-fold-show-entry
+              org-journal--list-dates
+              org-journal-is-journal
+              org-narrow-to-subtree
+              org-overview
+              org-time-stamp-format
+              org-up-heading-safe)
   :init
-  (define-prefix-command 'my-org-journal-map)
   (add-hook 'emacs-startup-hook
             #'my-org-journal-new-entry-on-startup)
   :custom
@@ -888,8 +939,7 @@ is created."
   (org-journal-time-format "")
   (org-journal-carryover-items "TODO=\"TODO\"")
   (org-journal-enable-agenda-integration t)
-  (org-journal-file-header
-   "#+startup: content\n#+SEQ_TODO: TODO(t) INPROGRESS(i) WAITING(w@) | DONE(d) CANCELED(c@)\n")
+  (org-journal-file-header "#+startup: content\n")
   (org-journal-find-file-fn #'find-file)
   :hook
   (org-journal-after-entry-create . my-org-journal-add-entry-id)
@@ -904,16 +954,12 @@ is created."
                  #'my-org-journal-fold-current-file)
 
   ;; Fold older dates after opening, but leave a newly created entry unfolded.
-  (unless (advice-member-p #'my-org-journal-fold-current-file-and-show-entry
-                           'org-journal-new-entry)
-    (advice-add 'org-journal-new-entry
-                :after
-                #'my-org-journal-fold-current-file-and-show-entry))
-  (unless (advice-member-p #'my-org-journal-fold-current-file
-                           'org-journal-open-current-journal-file)
-    (advice-add 'org-journal-open-current-journal-file
-                :after
-                #'my-org-journal-fold-current-file)))
+  (advice-add 'org-journal-new-entry
+              :after
+              #'my-org-journal-fold-current-file-and-show-entry)
+  (advice-add 'org-journal-open-current-journal-file
+              :after
+              #'my-org-journal-fold-current-file))
 
 ;;; AI assistance
 

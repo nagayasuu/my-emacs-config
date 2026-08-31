@@ -764,6 +764,7 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
       "DONE(d)"
       "CANCELED(c@)")))
   (org-log-done t)
+  (org-log-into-drawer t)
   (org-element-use-cache nil)
   ;; Keep property values separated by a single space instead of aligning
   ;; them to a fixed property-name width.

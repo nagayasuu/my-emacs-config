@@ -913,6 +913,13 @@ is created."
              (my-org-journal--at-heading-p))
     (org-fold-show-entry)))
 
+(defun my-org-journal-pcomplete-find-completion-function (orig command)
+  "Use Org's pcomplete functions in `org-journal-mode'."
+  (or (funcall orig command)
+      (and (derived-mode-p 'org-journal-mode)
+           (let ((major-mode 'org-mode))
+             (funcall orig command)))))
+
 (define-prefix-command 'my-org-journal-map)
 
 ;; Maintain date-based journal entries under the Org directory.
@@ -956,6 +963,16 @@ is created."
   ;; Replace the former shared advice when this configuration is reloaded.
   (advice-remove 'org-journal-new-entry
                  #'my-org-journal-fold-current-file)
+
+  ;; `pcomplete' looks up functions by the exact major mode name.  Fall back
+  ;; to Org's functions so their keyword completion also works in journals.
+  (advice-remove
+   'pcomplete-find-completion-function
+   #'my-org-journal-pcomplete-find-completion-function)
+  (advice-add
+   'pcomplete-find-completion-function
+   :around
+   #'my-org-journal-pcomplete-find-completion-function)
 
   ;; Fold older dates after opening, but leave a newly created entry unfolded.
   (advice-add 'org-journal-new-entry

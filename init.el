@@ -949,7 +949,7 @@ is created."
   (org-journal-file-format "%Y-%m-%d.org")
   (org-journal-date-format "%Y-%m-%d (%a)")
   (org-journal-time-format "")
-  (org-journal-carryover-items "TODO=\"TODO\"")
+  (org-journal-carryover-items "/!")
   (org-journal-enable-agenda-integration t)
   (org-journal-file-header "#+startup: content\n")
   (org-journal-find-file-fn #'find-file)

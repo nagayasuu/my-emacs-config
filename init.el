@@ -748,6 +748,10 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
            (file+function "projects.org" my-org-capture-project-heading)
            "* TODO %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
            :empty-lines 1)
+          ("P" "Project note" entry
+           (file+function "projects.org" my-org-capture-project-heading)
+           "* %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
+           :empty-lines 1)
           ("n" "Note" entry
            (file+headline org-default-notes-file "Notes")
            "* %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"

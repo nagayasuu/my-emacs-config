@@ -107,7 +107,7 @@
   "Foreground color of the tab-line close button on hover.")
 
 (defconst my-tab-line-close-help-echo "Close tab"
-  "Help text used to identify the tab-line close button.")
+  "Help text for the tab-line close button.")
 
 (defun my-apply-default-font (&optional frame)
   "Apply `my-default-font' to graphical FRAME."
@@ -173,6 +173,37 @@
 
 ;;;; Tab line
 
+(defvar my-tab-line--hovered-close-button nil
+  "Window and buffer whose tab close button is under the mouse.")
+
+(defun my-tab-line--close-button-help (window object position)
+  "Return close-button help for OBJECT at POSITION in WINDOW."
+  (let* ((tab (get-text-property position 'tab object))
+         (buffer (if (bufferp tab) tab (cdr (assq 'buffer tab)))))
+    (if (and (window-live-p window)
+             (buffer-live-p buffer)
+             (buffer-file-name buffer)
+             (buffer-modified-p buffer))
+        (propertize my-tab-line-close-help-echo
+                    'my-tab-line-close-hover (cons window buffer)
+                    'help-echo-inhibit-substitution t)
+      my-tab-line-close-help-echo)))
+
+(defun my-tab-line--update-close-hover (help)
+  "Update the hovered close button from mouse HELP, including exits."
+  (let ((target (and (stringp help)
+                     (> (length help) 0)
+                     (get-text-property 0 'my-tab-line-close-hover help))))
+    (unless (equal target my-tab-line--hovered-close-button)
+      (setq my-tab-line--hovered-close-button target)
+      (tab-line-force-update t))))
+
+(defun my-tab-line--install-hover-handler ()
+  "Track close-button hover through the current help display function."
+  (when show-help-function
+    (add-function :before show-help-function
+                  #'my-tab-line--update-close-hover)))
+
 (defun my-tab-line-tab-name (buffer &optional _buffers)
   "Return BUFFER's name with an icon and display padding."
   (let* ((file (buffer-file-name buffer))
@@ -208,8 +239,8 @@
   "Highlight the close button in tab-line TEXT inheriting TAB-FACE."
   (let ((close-start 0))
     (while (and (< close-start (length text))
-                (not (equal (get-text-property close-start 'help-echo text)
-                            my-tab-line-close-help-echo)))
+                (not (eq (get-text-property close-start 'help-echo text)
+                         #'my-tab-line--close-button-help)))
       (setq close-start
             (next-single-property-change
              close-start 'help-echo text (length text))))
@@ -221,9 +252,26 @@
                      ,tab-face))
        text))))
 
+(defvar tab-line-close-button)
+
 (defun my-tab-line-tab-name-format (tab tabs)
-  "Format TAB among TABS without changing its background on hover."
-  (let* ((text (tab-line-tab-name-format-default tab tabs))
+  "Format TAB among TABS, indicating unsaved file changes."
+  (let* ((buffer (if (bufferp tab)
+                     tab
+                   (cdr (assq 'buffer tab))))
+         (tab-line-close-button
+          (if (and (buffer-live-p buffer)
+                   (buffer-file-name buffer)
+                   (buffer-modified-p buffer)
+                   (not (and (eq (car-safe my-tab-line--hovered-close-button)
+                                 (selected-window))
+                             (eq (cdr-safe my-tab-line--hovered-close-button)
+                                 buffer))))
+              (let ((button (copy-sequence tab-line-close-button)))
+                (aset button 0 ?●)
+                button)
+            tab-line-close-button))
+         (text (tab-line-tab-name-format-default tab tabs))
          (tab-face (get-text-property 0 'face text)))
     ;; The default formatter uses `tab-line-highlight' as the mouse face,
     ;; which replaces the tab's own background while the pointer is over it.
@@ -251,11 +299,15 @@
   (setq tab-line-tab-name-format-function #'my-tab-line-tab-name-format
         tab-line-close-button
         (propertize "×"
-                    'face '(:foreground "#888888" :height 1.0)
+                    'face '(:foreground "#888888" :height 0.8)
                     'keymap tab-line-tab-close-map
                     'mouse-face `(:inherit tab-line-highlight
                                   :foreground ,my-tab-line-close-hover-color)
-                    'help-echo my-tab-line-close-help-echo))
+                    'help-echo #'my-tab-line--close-button-help))
+  (with-eval-after-load 'tooltip
+    ;; Tooltip mode replaces `show-help-function' when toggled.
+    (add-hook 'tooltip-mode-hook #'my-tab-line--install-hover-handler)
+    (my-tab-line--install-hover-handler))
   (set-face-attribute 'tab-line-tab-special nil
                       :slant 'normal
                       :weight 'normal))

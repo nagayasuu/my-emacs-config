@@ -270,7 +270,7 @@
               (let ((button (copy-sequence tab-line-close-button)))
                 (aset button 0 ?●)
                 ;; Use the tab color instead of the close button's gray.
-                (put-text-property 0 (length button) 'face
+                (put-text-property 0 1 'face
                                    '(:inherit nil :height 0.8) button)
                 button)
             tab-line-close-button))

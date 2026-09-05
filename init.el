@@ -269,6 +269,9 @@
                                  buffer))))
               (let ((button (copy-sequence tab-line-close-button)))
                 (aset button 0 ?●)
+                ;; Use the tab color instead of the close button's gray.
+                (put-text-property 0 (length button) 'face
+                                   '(:inherit nil :height 0.8) button)
                 button)
             tab-line-close-button))
          (text (tab-line-tab-name-format-default tab tabs))
@@ -308,6 +311,8 @@
     ;; Tooltip mode replaces `show-help-function' when toggled.
     (add-hook 'tooltip-mode-hook #'my-tab-line--install-hover-handler)
     (my-tab-line--install-hover-handler))
+  ;; Keep modified tab labels in their normal color; the dot marks changes.
+  (set-face-attribute 'tab-line-tab-modified nil :inherit nil)
   (set-face-attribute 'tab-line-tab-special nil
                       :slant 'normal
                       :weight 'normal))

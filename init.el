@@ -301,12 +301,14 @@
   :config
   (setq tab-line-tab-name-format-function #'my-tab-line-tab-name-format
         tab-line-close-button
-        (propertize "×"
-                    'face '(:foreground "#888888" :height 0.8)
-                    'keymap tab-line-tab-close-map
-                    'mouse-face `(:inherit tab-line-highlight
-                                  :foreground ,my-tab-line-close-hover-color)
-                    'help-echo #'my-tab-line--close-button-help))
+        (concat
+         (propertize "×"
+                     'face '(:foreground "#888888" :height 0.8)
+                     'keymap tab-line-tab-close-map
+                     'mouse-face `(:inherit tab-line-highlight
+                                   :foreground ,my-tab-line-close-hover-color)
+                     'help-echo #'my-tab-line--close-button-help)
+         (propertize " " 'rear-nonsticky t)))
   (with-eval-after-load 'tooltip
     ;; Tooltip mode replaces `show-help-function' when toggled.
     (add-hook 'tooltip-mode-hook #'my-tab-line--install-hover-handler)

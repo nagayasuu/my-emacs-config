@@ -42,6 +42,10 @@
     (expand-file-name "~/Dropbox/org/"))
   "Root directory for Org files.")
 
+;; `ccc' from ddskk uses color helpers provided by `facemenu'.
+(with-eval-after-load 'ccc
+  (require 'facemenu))
+
 ;;; Platform integration
 
 ;;;; Windows
@@ -554,6 +558,12 @@ FORCE is the optional second argument of `make-frame-invisible'."
 ;;;; Project tree
 
 ;; Keep the file tree beside the search and buffer-navigation commands.
+(defun my-treemacs-open-org ()
+  "Add `my-org-directory' to Treemacs, then open its workspace."
+  (require 'treemacs)
+  (treemacs-do-add-project-to-workspace my-org-directory "org")
+  (treemacs))
+
 (use-package treemacs
   :ensure t
   :custom
@@ -561,7 +571,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
   (treemacs-follow-mode t)
   (treemacs-filewatch-mode t)
   (treemacs-is-never-other-window t)
-  :hook (emacs-startup . treemacs)
+  :hook (emacs-startup . my-treemacs-open-org)
   :config
   ;; A single click expands directories and opens files.
   (define-key treemacs-mode-map [mouse-1]

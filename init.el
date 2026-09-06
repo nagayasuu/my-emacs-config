@@ -551,6 +551,22 @@ FORCE is the optional second argument of `make-frame-invisible'."
    ("C-c g" . my-consult-ripgrep-select-directory)
    ("C-c h" . consult-org-agenda)))
 
+;;;; Project tree
+
+;; Keep the file tree beside the search and buffer-navigation commands.
+(use-package treemacs
+  :ensure t
+  :custom
+  (treemacs-width 30)
+  (treemacs-follow-mode t)
+  (treemacs-filewatch-mode t)
+  (treemacs-is-never-other-window t)
+  :hook (emacs-startup . treemacs)
+  :config
+  ;; A single click expands directories and opens files.
+  (define-key treemacs-mode-map [mouse-1]
+              #'treemacs-single-click-expand-action))
+
 ;;;; In-buffer completion
 
 ;; Keep the capitalization of dynamic abbreviations unchanged.

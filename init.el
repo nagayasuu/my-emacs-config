@@ -1075,8 +1075,13 @@ is created."
 ;;;; Startup agenda
 
 (defun my-org-agenda-show-today-on-startup ()
-  "Show today's Org agenda after startup."
-  (org-agenda-list nil nil 'day))
+  "Show today's Org agenda in the most recently used ordinary window."
+  (if-let ((target-window
+            (get-mru-window (selected-frame) nil nil t)))
+      (progn
+        (select-window target-window)
+        (org-agenda-list nil nil 'day))
+    (org-agenda-list nil nil 'day)))
 
 ;; Run after the startup journal hook so the agenda remains visible.
 (add-hook 'emacs-startup-hook

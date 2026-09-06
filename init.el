@@ -577,6 +577,12 @@ FORCE is the optional second argument of `make-frame-invisible'."
   (define-key treemacs-mode-map [mouse-1]
               #'treemacs-single-click-expand-action))
 
+(use-package treemacs-nerd-icons
+  :ensure t
+  :after (treemacs nerd-icons)
+  :config
+  (treemacs-nerd-icons-config))
+
 ;;;; In-buffer completion
 
 ;; Keep the capitalization of dynamic abbreviations unchanged.

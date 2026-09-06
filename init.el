@@ -214,7 +214,7 @@
          (icon (copy-sequence
                 (if file
                     (nerd-icons-icon-for-file file)
-                  (nerd-icons-icon-for-mode 'text-mode)))))
+                  (nerd-icons-codicon "nf-cod-file")))))
     (when icon
       ;; Save the icon face because the default tab formatter replaces it.
       (put-text-property 0 (length icon)

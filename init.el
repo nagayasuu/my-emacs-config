@@ -161,14 +161,34 @@
 
 (use-package catppuccin-theme
   :ensure t
+  ;; The package only provides a theme, not an Emacs Lisp feature.
   :no-require t
-  :defines catppuccin-flavor
   :functions catppuccin-color
   :init
   (setq catppuccin-flavor 'frappe)
-  (add-hook 'enable-theme-functions #'my-catppuccin-tab-line-faces)
-  :config
-  (load-theme 'catppuccin :no-confirm))
+  (add-hook 'enable-theme-functions #'my-catppuccin-tab-line-faces))
+
+(use-package doric-themes
+  :ensure t
+  :demand t
+  :init
+  (setq doric-themes-to-toggle '(doric-light doric-dark)))
+
+(defconst my-theme-candidates
+  '(catppuccin doric-mermaid)
+  "Themes selectable with `my-select-theme'.")
+
+(defun my-select-theme (theme)
+  "Disable active themes, then load THEME."
+  (interactive
+   (list
+    (intern
+     (completing-read "Theme: " my-theme-candidates nil t))))
+  (mapc #'disable-theme custom-enabled-themes)
+  (load-theme theme :no-confirm))
+
+;; Start with Doric Mermaid, while retaining Catppuccin as an interactive alternative.
+(my-select-theme 'doric-mermaid)
 
 ;; Use a minimal mode line.
 (use-package simple-modeline

@@ -127,7 +127,18 @@
       ;; Doric uses these faces for code, tables, and proportional UI text.
       ;; `set-frame-font' only changes the `default' face.
       (set-face-attribute 'fixed-pitch nil :family my-default-font-family)
-      (set-face-attribute 'variable-pitch nil :family my-default-font-family))))
+      (set-face-attribute 'variable-pitch nil
+                          :family "UDEV Gothic 35JPDOC"
+                          :height 1.0))))
+
+(defun my-apply-org-fixed-pitch-faces ()
+  "Use the fixed-pitch family for Org metadata faces."
+  (dolist (face '(org-special-keyword
+                  org-date
+                  org-drawer
+                  org-property-value))
+    (when (facep face)
+      (set-face-attribute face nil :family my-default-font-family))))
 
 (defun my-catppuccin-tab-line-faces (theme)
   "Set contrasting tab-line faces when THEME is Catppuccin."
@@ -195,7 +206,8 @@
     (intern
      (completing-read "Theme: " my-theme-candidates nil t))))
   (mapc #'disable-theme custom-enabled-themes)
-  (load-theme theme :no-confirm))
+  (load-theme theme :no-confirm)
+  (my-apply-org-fixed-pitch-faces))
 
 ;; Start with Doric Mermaid, while retaining Catppuccin as an interactive alternative.
 (my-select-theme 'doric-mermaid)
@@ -924,10 +936,15 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
    ([remap org-cycle] . my-org-cycle-list-item-through-blank-lines))
 
   :hook
+  ;; Render regular Org prose with the `variable-pitch' face.
+  (org-mode . variable-pitch-mode)
   ;; Visually indent content according to its heading level.
   (org-mode . org-indent-mode)
 
   :config
+  ;; Keep planning and property metadata in the fixed-pitch family.
+  (my-apply-org-fixed-pitch-faces)
+
   ;; Fold property drawers in the newly captured entry.
   (add-hook 'org-capture-mode-hook #'my-org-capture-fold-properties)
 

@@ -596,6 +596,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 (use-package treemacs
   :ensure t
+  :disabled t
   :custom
   (treemacs-width 30)
   (treemacs-follow-mode t)
@@ -609,6 +610,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
 
 (use-package treemacs-nerd-icons
   :ensure t
+  :disabled t
   :after (treemacs nerd-icons)
   :config
   (treemacs-nerd-icons-config))

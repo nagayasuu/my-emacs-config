@@ -19,6 +19,7 @@
 
 ;; Load Emacs' built-in package manager.
 (require 'package)
+(require 'use-package)
 
 ;; Provide Common Lisp forms used by personal Org commands.
 (require 'cl-lib)
@@ -112,12 +113,6 @@
 
 (defconst my-tab-line-vertical-padding 2
   "Vertical padding around tab-line labels, in pixels.")
-
-(defconst my-tab-line-close-hover-color "#e78284"
-  "Foreground color of the tab-line close button on hover.")
-
-(defconst my-tab-line-close-help-echo "Close tab"
-  "Help text for the tab-line close button.")
 
 (defun my-apply-default-font (&optional frame)
   "Apply the configured fonts to graphical FRAME."
@@ -219,17 +214,31 @@
 
 ;;;; Tab line
 
+(defconst my-tab-line-close-hover-color "#e78284"
+  "Foreground color of the tab-line close button on hover.")
+
+(defconst my-tab-line-close-help-echo "Close tab"
+  "Help text for the tab-line close button.")
+
 (defvar my-tab-line--hovered-close-button nil
   "Window and buffer whose tab close button is under the mouse.")
+
+(defun my-tab-line--buffer (tab)
+  "Return the buffer represented by TAB, a buffer or a tab alist."
+  (if (bufferp tab) tab (cdr (assq 'buffer tab))))
+
+(defun my-tab-line--modified-file-p (buffer)
+  "Return non-nil when BUFFER visits a file and has unsaved changes."
+  (and (buffer-live-p buffer)
+       (buffer-file-name buffer)
+       (buffer-modified-p buffer)))
 
 (defun my-tab-line--close-button-help (window object position)
   "Return close-button help for OBJECT at POSITION in WINDOW."
   (let* ((tab (get-text-property position 'tab object))
-         (buffer (if (bufferp tab) tab (cdr (assq 'buffer tab)))))
+         (buffer (my-tab-line--buffer tab)))
     (if (and (window-live-p window)
-             (buffer-live-p buffer)
-             (buffer-file-name buffer)
-             (buffer-modified-p buffer))
+             (my-tab-line--modified-file-p buffer))
         (propertize my-tab-line-close-help-echo
                     'my-tab-line-close-hover (cons window buffer)
                     'help-echo-inhibit-substitution t)
@@ -302,13 +311,9 @@
 
 (defun my-tab-line-tab-name-format (tab tabs)
   "Format TAB among TABS, indicating unsaved file changes."
-  (let* ((buffer (if (bufferp tab)
-                     tab
-                   (cdr (assq 'buffer tab))))
+  (let* ((buffer (my-tab-line--buffer tab))
          (tab-line-close-button
-          (if (and (buffer-live-p buffer)
-                   (buffer-file-name buffer)
-                   (buffer-modified-p buffer)
+          (if (and (my-tab-line--modified-file-p buffer)
                    (not (and (eq (car-safe my-tab-line--hovered-close-button)
                                  (selected-window))
                              (eq (cdr-safe my-tab-line--hovered-close-button)
@@ -714,7 +719,7 @@ FORCE is the optional second argument of `make-frame-invisible'."
              #'string>)))))
 
 (defun my-org-refile-target-verify ()
-  "Allow only the latest heading in the latest journal file."
+  "Allow regular targets and the last heading in the latest journal file."
   (let ((latest-journal-file (my-org-latest-journal-file)))
     (or (not (and buffer-file-name
                   latest-journal-file
@@ -759,6 +764,14 @@ the first current target as the default.  Return TARGETS unchanged."
     (apply function arguments)))
 
 ;;;; Capture and archiving
+
+(defun my-org-capture-entry-template (heading)
+  "Return a capture template for HEADING with standard entry metadata."
+  (concat "* " heading "\n"
+          ":PROPERTIES:\n"
+          ":ID: %(org-id-new)\n"
+          ":CREATED_AT: %U\n"
+          ":END:\n"))
 
 (defun my-org-capture-project-heading ()
   "Move point to a selected top-level project heading."
@@ -875,21 +888,21 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
         org-default-notes-file
         (expand-file-name "inbox.org" org-directory)
         org-capture-templates
-        '(("t" "Task" entry
+        `(("t" "Task" entry
            (file+headline org-default-notes-file "Tasks")
-           "* TODO %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
+           ,(my-org-capture-entry-template "TODO %?")
            :empty-lines 1)
           ("p" "Project task" entry
            (file+function "projects.org" my-org-capture-project-heading)
-           "* TODO %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
+           ,(my-org-capture-entry-template "TODO %?")
            :empty-lines 1)
           ("P" "Project note" entry
            (file+function "projects.org" my-org-capture-project-heading)
-           "* %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
+           ,(my-org-capture-entry-template "%?")
            :empty-lines 1)
           ("n" "Note" entry
            (file+headline org-default-notes-file "Notes")
-           "* %?\n:PROPERTIES:\n:ID: %(org-id-new)\n:CREATED_AT: %U\n:END:\n"
+           ,(my-org-capture-entry-template "%?")
            :empty-lines 1)))
 
   :custom
@@ -1032,7 +1045,7 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
     (org-journal-new-entry t)))
 
 (defun my-org-journal--at-heading-p ()
-  "Return non-nil when point is at a heading in an Org journal."
+  "Return non-nil when point is within an Org journal entry."
   (and (derived-mode-p 'org-mode)
        (org-journal-is-journal)
        (not (org-before-first-heading-p))))
@@ -1131,12 +1144,10 @@ is created."
 
 (defun my-org-agenda-show-today-on-startup ()
   "Show today's Org agenda in the most recently used ordinary window."
-  (if-let ((target-window
-            (get-mru-window (selected-frame) nil nil t)))
-      (progn
-        (select-window target-window)
-        (org-agenda-list nil nil 'day))
-    (org-agenda-list nil nil 'day)))
+  (when-let ((target-window
+              (get-mru-window (selected-frame) nil nil t)))
+    (select-window target-window))
+  (org-agenda-list nil nil 'day))
 
 ;; Run after the startup journal hook so the agenda remains visible.
 (add-hook 'emacs-startup-hook

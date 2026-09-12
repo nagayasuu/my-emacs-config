@@ -104,6 +104,12 @@
     "UDEV Gothic JPDOC-12")
   "Font used in graphical frames.")
 
+(defconst my-default-font-family
+  (if (eq system-type 'gnu/linux)
+      "PlemolJP"
+    "UDEV Gothic JPDOC")
+  "Font family used by text faces.")
+
 (defconst my-tab-line-vertical-padding 2
   "Vertical padding around tab-line labels, in pixels.")
 
@@ -114,10 +120,14 @@
   "Help text for the tab-line close button.")
 
 (defun my-apply-default-font (&optional frame)
-  "Apply `my-default-font' to graphical FRAME."
+  "Apply the configured fonts to graphical FRAME."
   (with-selected-frame (or frame (selected-frame))
     (when (display-graphic-p)
-      (set-frame-font my-default-font))))
+      (set-frame-font my-default-font)
+      ;; Doric uses these faces for code, tables, and proportional UI text.
+      ;; `set-frame-font' only changes the `default' face.
+      (set-face-attribute 'fixed-pitch nil :family my-default-font-family)
+      (set-face-attribute 'variable-pitch nil :family my-default-font-family))))
 
 (defun my-catppuccin-tab-line-faces (theme)
   "Set contrasting tab-line faces when THEME is Catppuccin."

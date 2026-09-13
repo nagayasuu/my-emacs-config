@@ -111,6 +111,12 @@
     "UDEV Gothic JPDOC")
   "Font family used by text faces.")
 
+(defconst my-variable-pitch-font-family
+  (if (eq system-type 'gnu/linux)
+      "PlemolJP35"
+    "UDEV Gothic 35JPDOC")
+  "Font family used by proportional text faces.")
+
 (defconst my-tab-line-vertical-padding 2
   "Vertical padding around tab-line labels, in pixels.")
 
@@ -123,7 +129,7 @@
       ;; `set-frame-font' only changes the `default' face.
       (set-face-attribute 'fixed-pitch nil :family my-default-font-family)
       (set-face-attribute 'variable-pitch nil
-                          :family "UDEV Gothic 35JPDOC"
+                          :family my-variable-pitch-font-family
                           :height 1.0))))
 
 (defun my-apply-org-fixed-pitch-faces ()

@@ -102,7 +102,7 @@
 (defconst my-default-font
   (if (eq system-type 'gnu/linux)
       "PlemolJP-13"
-    "UDEV Gothic JPDOC-12")
+    "UDEV Gothic JPDOC-11")
   "Font used in graphical frames.")
 
 (defconst my-default-font-family

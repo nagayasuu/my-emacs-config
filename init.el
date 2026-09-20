@@ -1149,7 +1149,7 @@ is created."
   (org-journal-time-format "")
   (org-journal-carryover-items "/!")
   (org-journal-enable-agenda-integration t)
-  (org-journal-file-header "#+startup: content\n")
+  (org-journal-file-header "#+startup: content\n\n\n")
   (org-journal-find-file-fn #'find-file)
   :hook
   (org-journal-after-entry-create . my-org-journal-add-entry-id)

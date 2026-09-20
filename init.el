@@ -133,11 +133,23 @@
                           :height 1.0))))
 
 (defun my-apply-org-fixed-pitch-faces ()
-  "Use the fixed-pitch family for Org metadata faces."
-  (dolist (face '(org-special-keyword
+  "Use the fixed-pitch family for Org code and metadata faces."
+  (dolist (face '(org-block
+                  org-block-begin-line
+                  org-block-end-line
+                  org-checkbox
+                  org-code
+                  org-column-title
                   org-date
+                  org-document-info-keyword
                   org-drawer
-                  org-property-value))
+                  org-formula
+                  org-indent
+                  org-meta-line
+                  org-property-value
+                  org-special-keyword
+                  org-table
+                  org-verbatim))
     (when (facep face)
       (set-face-attribute face nil :family my-default-font-family))))
 
@@ -162,6 +174,12 @@
                     tab-line-tab-current
                     tab-line-tab-inactive))
       (custom-theme-recalc-face face))))
+
+(defun my-apply-catppuccin-fonts (theme)
+  "Reapply configured fonts after enabling Catppuccin THEME."
+  (when (eq theme 'catppuccin)
+    (my-apply-default-font)
+    (my-apply-org-fixed-pitch-faces)))
 
 ;; Cover both a regular startup frame and frames created by the daemon.
 (my-apply-default-font)
@@ -188,7 +206,8 @@
   :functions catppuccin-color
   :init
   (setq catppuccin-flavor 'frappe)
-  (add-hook 'enable-theme-functions #'my-catppuccin-tab-line-faces))
+  (add-hook 'enable-theme-functions #'my-catppuccin-tab-line-faces)
+  (add-hook 'enable-theme-functions #'my-apply-catppuccin-fonts))
 
 (use-package doric-themes
   :ensure t

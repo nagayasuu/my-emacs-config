@@ -32,6 +32,8 @@ The following external Emacs packages are installed automatically by
 | [`orderless`](https://github.com/oantolin/orderless) | Enables order-independent completion matching. |
 | [`marginalia`](https://github.com/minad/marginalia) | Adds contextual annotations to completion candidates. |
 | [`consult`](https://github.com/minad/consult) | Provides enhanced navigation and search commands. |
+| [`embark`](https://github.com/oantolin/embark) | Provides context-sensitive actions and exports for completion candidates. |
+| [`embark-consult`](https://github.com/oantolin/embark) | Adds dedicated export buffers for Consult results. |
 | [`corfu`](https://github.com/minad/corfu) | Displays completion-at-point candidates in a popup. |
 | [`cape`](https://github.com/minad/cape) | Adds completion-at-point backends for words and file paths. |
 | [`org-appear`](https://github.com/awth13/org-appear) | Reveals hidden Org markup around the cursor. |
@@ -45,6 +47,8 @@ The following external Emacs packages are installed automatically by
 | `C-c f` | `my-consult-find-select-directory` | Select a directory and find files by name. |
 | `C-c g` | `my-consult-ripgrep-select-directory` | Select a directory and search its contents with ripgrep. |
 | `C-c h` | `consult-org-agenda` | Select a heading from the Org agenda files. |
+| `C-.` | `embark-act` | Choose an action for the current completion candidate. |
+| `C-c E` | `embark-export` | Export current completion candidates to a dedicated buffer. |
 | `C-c l` | `org-store-link` | Store a link to the current location. |
 | `C-c a` | `org-agenda` | Open the Org agenda dispatcher. |
 | `C-c c` | `org-capture` | Capture a new entry using an Org capture template. |

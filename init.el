@@ -627,6 +627,22 @@ FORCE is the optional second argument of `make-frame-invisible'."
    ("C-c g" . my-consult-ripgrep-select-directory)
    ("C-c h" . consult-org-agenda)))
 
+;; Act on completion candidates and export search results to dedicated buffers.
+(use-package embark
+  :ensure t
+  :bind
+  (("C-." . embark-act)
+   ("C-c E" . embark-export))
+  :init
+  (setq prefix-help-command #'embark-prefix-help-command))
+
+;; Extend Embark's exports for Consult results, such as `consult-ripgrep'.
+(use-package embark-consult
+  :ensure t
+  :after (embark consult)
+  :hook
+  (embark-collect-mode . consult-preview-at-point-mode))
+
 ;;;; Project tree
 
 ;; Keep the file tree beside the search and buffer-navigation commands.

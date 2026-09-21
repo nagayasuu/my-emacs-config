@@ -712,6 +712,17 @@ FORCE is the optional second argument of `make-frame-invisible'."
   :init
   (which-key-mode 1))
 
+;;; Terminal
+
+;; Run a fully featured terminal emulator in an Emacs buffer.  On Windows,
+;; it uses the first shell available through `exec-path' (the MSYS2 paths
+;; above make its shell available when MSYS2 is installed).
+(use-package eat
+  :ensure t
+  :disabled t
+  :commands eat
+  :bind ("C-c t" . eat))
+
 ;;; Org mode
 
 ;;;; Paths and refiling

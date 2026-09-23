@@ -99,22 +99,20 @@
 
 ;;;; Appearance
 
+(defconst my-default-font-size
+  (if (eq system-type 'gnu/linux) 13 11)
+  "Default font size for the current operating system.")
+
 (defconst my-default-font
-  (if (eq system-type 'gnu/linux)
-      "PlemolJP-13"
-    "UDEV Gothic JPDOC-11")
+  (format "PlemolJP-%d" my-default-font-size)
   "Font used in graphical frames.")
 
 (defconst my-default-font-family
-  (if (eq system-type 'gnu/linux)
-      "PlemolJP"
-    "UDEV Gothic JPDOC")
+  "PlemolJP"
   "Font family used by text faces.")
 
 (defconst my-variable-pitch-font-family
-  (if (eq system-type 'gnu/linux)
-      "PlemolJP35"
-    "UDEV Gothic 35JPDOC")
+  "PlemolJP35"
   "Font family used by proportional text faces.")
 
 (defconst my-tab-line-vertical-padding 2

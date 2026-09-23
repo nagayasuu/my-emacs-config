@@ -29,12 +29,6 @@
              '("melpa" . "https://melpa.org/packages/")
              t)
 
-;; Add NonGNU Devel and pin gptel to that archive.
-(add-to-list 'package-archives
-             '("nongnu-devel" . "https://elpa.nongnu.org/nongnu-devel/"))
-(add-to-list 'package-pinned-packages
-             '(gptel . "nongnu-devel"))
-
 ;;; Shared paths
 
 (defconst my-org-directory
@@ -581,36 +575,6 @@ FORCE is the optional second argument of `make-frame-invisible'."
   :hook
   (embark-collect-mode . consult-preview-at-point-mode))
 
-;;;; Project tree
-
-;; Keep the file tree beside the search and buffer-navigation commands.
-(defun my-treemacs-open-org ()
-  "Add `my-org-directory' to Treemacs, then open its workspace."
-  (require 'treemacs)
-  (treemacs-do-add-project-to-workspace my-org-directory "org")
-  (treemacs))
-
-(use-package treemacs
-  :ensure t
-  :disabled t
-  :custom
-  (treemacs-width 30)
-  (treemacs-follow-mode t)
-  (treemacs-filewatch-mode t)
-  (treemacs-is-never-other-window t)
-  :hook (emacs-startup . my-treemacs-open-org)
-  :config
-  ;; A single click expands directories and opens files.
-  (define-key treemacs-mode-map [mouse-1]
-              #'treemacs-single-click-expand-action))
-
-(use-package treemacs-nerd-icons
-  :ensure t
-  :disabled t
-  :after (treemacs nerd-icons)
-  :config
-  (treemacs-nerd-icons-config))
-
 ;;;; In-buffer completion
 
 ;; Keep the capitalization of dynamic abbreviations unchanged.
@@ -649,17 +613,6 @@ FORCE is the optional second argument of `make-frame-invisible'."
   :ensure nil
   :init
   (which-key-mode 1))
-
-;;; Terminal
-
-;; Run a fully featured terminal emulator in an Emacs buffer.  On Windows,
-;; it uses the first shell available through `exec-path' (the MSYS2 paths
-;; above make its shell available when MSYS2 is installed).
-(use-package eat
-  :ensure t
-  :disabled t
-  :commands eat
-  :bind ("C-c t" . eat))
 
 ;;; Org mode
 
@@ -1143,17 +1096,6 @@ is created."
 (add-hook 'emacs-startup-hook
           #'my-org-agenda-show-today-on-startup
           t)
-
-;;; AI assistance
-
-;; Keep the OAuth-authenticated OpenAI backend available but disabled.
-(use-package gptel
-  :ensure t
-  :disabled t
-  :config
-  (setq gptel-model 'gpt-5.6-sol
-        gptel-backend
-        (gptel-make-openai-oauth "OpenAI-sub")))
 
 ;;; Customize
 

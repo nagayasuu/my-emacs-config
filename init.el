@@ -115,9 +115,6 @@
   "PlemolJP35"
   "Font family used by proportional text faces.")
 
-(defconst my-tab-line-vertical-padding 2
-  "Vertical padding around tab-line labels, in pixels.")
-
 (defun my-apply-default-font (&optional frame)
   "Apply the configured fonts to graphical FRAME."
   (with-selected-frame (or frame (selected-frame))
@@ -151,28 +148,6 @@
     (when (facep face)
       (set-face-attribute face nil :family my-default-font-family))))
 
-(defun my-catppuccin-tab-line-faces (theme)
-  "Set contrasting tab-line faces when THEME is Catppuccin."
-  (when (eq theme 'catppuccin)
-    (custom-theme-set-faces
-     'catppuccin
-     `(tab-line-tab
-       ((t (:inherit tab-line
-            :foreground ,(catppuccin-color 'text)
-            :box (:line-width (-1 . ,my-tab-line-vertical-padding)
-                  :color ,(catppuccin-color 'base))))))
-     `(tab-line-tab-current
-       ((t (:inherit tab-line-tab))))
-     `(tab-line-tab-inactive
-       ((t (:foreground ,(catppuccin-color 'subtext0)
-            :background ,(catppuccin-color 'surface0)
-            :box (:line-width (-1 . ,my-tab-line-vertical-padding)
-                  :color ,(catppuccin-color 'surface0)))))))
-    (dolist (face '(tab-line-tab
-                    tab-line-tab-current
-                    tab-line-tab-inactive))
-      (custom-theme-recalc-face face))))
-
 (defun my-apply-catppuccin-fonts (theme)
   "Reapply configured fonts after enabling Catppuccin THEME."
   (when (eq theme 'catppuccin)
@@ -201,10 +176,8 @@
   :ensure t
   ;; The package only provides a theme, not an Emacs Lisp feature.
   :no-require t
-  :functions catppuccin-color
   :init
   (setq catppuccin-flavor 'frappe)
-  (add-hook 'enable-theme-functions #'my-catppuccin-tab-line-faces)
   (add-hook 'enable-theme-functions #'my-apply-catppuccin-fonts))
 
 (use-package doric-themes
@@ -386,12 +359,7 @@
   (with-eval-after-load 'tooltip
     ;; Tooltip mode replaces `show-help-function' when toggled.
     (add-hook 'tooltip-mode-hook #'my-tab-line--install-hover-handler)
-    (my-tab-line--install-hover-handler))
-  ;; Keep modified tab labels in their normal color; the dot marks changes.
-  (set-face-attribute 'tab-line-tab-modified nil :inherit nil)
-  (set-face-attribute 'tab-line-tab-special nil
-                      :slant 'normal
-                      :weight 'normal))
+    (my-tab-line--install-hover-handler)))
 
 ;;;; Scrolling
 

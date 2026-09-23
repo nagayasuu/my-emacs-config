@@ -148,12 +148,6 @@
     (when (facep face)
       (set-face-attribute face nil :family my-default-font-family))))
 
-(defun my-apply-catppuccin-fonts (theme)
-  "Reapply configured fonts after enabling Catppuccin THEME."
-  (when (eq theme 'catppuccin)
-    (my-apply-default-font)
-    (my-apply-org-fixed-pitch-faces)))
-
 ;; Cover both a regular startup frame and frames created by the daemon.
 (my-apply-default-font)
 (add-hook 'after-make-frame-functions #'my-apply-default-font)
@@ -165,43 +159,12 @@
 (setq-default cursor-type 'bar)
 (blink-cursor-mode 1)
 
-;; Keep the Ef Light theme available as a disabled alternative.
-(use-package ef-themes
-  :ensure t
-  :disabled t
-  :config
-  (load-theme 'ef-light t))
-
-(use-package catppuccin-theme
-  :ensure t
-  ;; The package only provides a theme, not an Emacs Lisp feature.
-  :no-require t
-  :init
-  (setq catppuccin-flavor 'frappe)
-  (add-hook 'enable-theme-functions #'my-apply-catppuccin-fonts))
-
 (use-package doric-themes
   :ensure t
   :demand t
-  :init
-  (setq doric-themes-to-toggle '(doric-light doric-dark)))
-
-(defconst my-theme-candidates
-  '(catppuccin doric-mermaid)
-  "Themes selectable with `my-select-theme'.")
-
-(defun my-select-theme (theme)
-  "Disable active themes, then load THEME."
-  (interactive
-   (list
-    (intern
-     (completing-read "Theme: " my-theme-candidates nil t))))
-  (mapc #'disable-theme custom-enabled-themes)
-  (load-theme theme :no-confirm)
+  :config
+  (load-theme 'doric-mermaid :no-confirm)
   (my-apply-org-fixed-pitch-faces))
-
-;; Start with Doric Mermaid, while retaining Catppuccin as an interactive alternative.
-(my-select-theme 'doric-mermaid)
 
 ;; Use a minimal mode line.
 (use-package simple-modeline

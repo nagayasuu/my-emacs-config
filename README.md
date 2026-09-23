@@ -23,7 +23,7 @@ The following external Emacs packages are installed automatically by
 
 | Package | Purpose |
 | --- | --- |
-| [`catppuccin-theme`](https://github.com/catppuccin/emacs) | Provides the Catppuccin Frappé color theme. |
+| [`doric-themes`](https://github.com/protesilaos/doric-themes) | Provides the Doric Mermaid color theme. |
 | [`simple-modeline`](https://github.com/gexplorer/simple-modeline) | Provides a minimal mode line. |
 | [`nerd-icons`](https://github.com/rainstormstudio/nerd-icons.el) | Adds file-type icons to tab-line tabs. |
 | [`easy-kill`](https://github.com/leoliu/easy-kill) | Provides context-aware commands for copying and marking text. |

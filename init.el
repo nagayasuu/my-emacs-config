@@ -216,6 +216,13 @@
 (defconst my-tab-line-close-help-echo "Close tab"
   "Help text for the tab-line close button.")
 
+(defun my-apply-tab-line-vertical-padding (&optional _theme)
+  "Add vertical padding to tabs without drawing a hover border."
+  (dolist (face '(tab-line-tab tab-line-tab-current tab-line-tab-inactive))
+    (set-face-attribute face nil
+                        :box '(:line-width (1 . 4) :style flat-button)))
+  (set-face-attribute 'tab-line-highlight nil :box nil))
+
 (defvar my-tab-line--hovered-close-button nil
   "Window and buffer whose tab close button is under the mouse.")
 
@@ -356,6 +363,8 @@
                                    :foreground ,my-tab-line-close-hover-color)
                      'help-echo #'my-tab-line--close-button-help)
          (propertize " " 'rear-nonsticky t)))
+  (my-apply-tab-line-vertical-padding)
+  (add-hook 'enable-theme-functions #'my-apply-tab-line-vertical-padding)
   (with-eval-after-load 'tooltip
     ;; Tooltip mode replaces `show-help-function' when toggled.
     (add-hook 'tooltip-mode-hook #'my-tab-line--install-hover-handler)

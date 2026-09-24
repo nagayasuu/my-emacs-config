@@ -62,6 +62,21 @@
                        (cons directory path-directories)
                        path-separator))))
 
+(defun my-reveal-current-file-in-explorer ()
+  "Open Windows Explorer with the current buffer's file selected."
+  (interactive)
+  (let ((file buffer-file-name))
+    (unless file
+      (user-error "Current buffer is not visiting a file"))
+    (unless (eq system-type 'windows-nt)
+      (user-error "Windows Explorer is only available on Windows"))
+    (when (file-remote-p file)
+      (user-error "Cannot select a remote file in Windows Explorer"))
+    (w32-shell-execute
+     "open" "explorer.exe"
+     (format "/select,\"%s\""
+             (subst-char-in-string ?/ ?\\ (expand-file-name file))))))
+
 (when (eq system-type 'windows-nt)
   ;; Use UTF-8 as the default coding system on Windows.
   (set-language-environment "UTF-8")

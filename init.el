@@ -891,35 +891,43 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
               (org-cycle arg)))))
     (org-cycle arg)))
 
-(defun my-org-sort-keep-folds (function &rest args)
-  "Preserve outline folds while calling sorting FUNCTION with ARGS."
-  (let ((tag (make-symbol "org-sort-fold")))
-    (unwind-protect
-        (progn
-          ;; Text properties move with entries when `sort-subr' rearranges them.
-          (with-silent-modifications
-            (save-restriction
-              (widen)
-              (dolist (fold (org-fold-get-regions :specs 'outline))
-                (put-text-property
-                 (car fold) (1+ (car fold)) tag
-                 (- (cadr fold) (car fold))))))
-          (apply function args))
+(defun my-org-sort-fold-entries (function &rest args)
+  "Fold sorted entries after calling sorting FUNCTION with ARGS."
+  (let ((bounds
+         (save-excursion
+           (cond
+            ((org-region-active-p)
+             (let ((start (region-beginning))
+                   (end (region-end)))
+               (goto-char start)
+               (if (org-at-heading-p)
+                   (beginning-of-line)
+                 (outline-next-heading))
+               (setq start (point))
+               (goto-char end)
+               (org-end-of-subtree nil t)
+               (cons start (point))))
+            ((or (org-at-heading-p)
+                 (ignore-errors (progn (org-back-to-heading) t)))
+             (org-back-to-heading)
+             (let ((end (save-excursion (org-end-of-subtree t t))))
+               (outline-next-heading)
+               (cons (point) end)))
+            (t
+             (goto-char (point-min))
+             (unless (org-at-heading-p) (outline-next-heading))
+             (cons (point) (point-max)))))))
+    (prog1 (apply function args)
       (save-excursion
-        (save-restriction
-          (widen)
-          (goto-char (point-min))
-          (while (< (point) (point-max))
-            (let ((length (get-text-property (point) tag)))
-              (when length
-                (org-fold-region (point) (+ (point) length) t 'outline)))
-            (goto-char
-             (or (next-single-property-change
-                  (point) tag nil (point-max))
-                 (point-max))))
-          (with-silent-modifications
-            (remove-text-properties
-             (point-min) (point-max) (list tag nil))))))))
+        (goto-char (car bounds))
+        (when (and (< (point) (cdr bounds)) (org-at-heading-p))
+          (let ((level (funcall outline-level)))
+            (while (and (< (point) (cdr bounds))
+                        (org-at-heading-p)
+                        (= (funcall outline-level) level))
+              (org-fold-hide-subtree)
+              (unless (org-get-next-sibling)
+                (goto-char (cdr bounds))))))))))
 
 ;;;; Core configuration
 
@@ -932,8 +940,8 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
               org-at-heading-p
               org-at-item-p
               org-fold-folded-p
-              org-fold-get-regions
               org-fold-hide-drawer-all
+              org-fold-hide-subtree
               org-fold-region
               org-get-next-sibling
               org-id-new
@@ -943,6 +951,7 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
               org-list-struct
               org-refile-get-location
               org-refile-get-targets
+              org-region-active-p
               org-unlogged-message)
   :init
   (setq org-directory my-org-directory
@@ -1030,9 +1039,12 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
   ;; Fold property drawers in the newly captured entry.
   (add-hook 'org-capture-mode-hook #'my-org-capture-fold-properties)
 
-  ;; Keep existing headline folds when sorting moves entries.
-  (unless (advice-member-p #'my-org-sort-keep-folds 'org-sort-entries)
-    (advice-add 'org-sort-entries :around #'my-org-sort-keep-folds))
+  ;; Fold every sorted entry after sorting, regardless of its earlier state.
+  ;; Remove the previous behavior when reloading this file in a running Emacs.
+  (when (advice-member-p #'my-org-sort-keep-folds 'org-sort-entries)
+    (advice-remove 'org-sort-entries #'my-org-sort-keep-folds))
+  (unless (advice-member-p #'my-org-sort-fold-entries 'org-sort-entries)
+    (advice-add 'org-sort-entries :around #'my-org-sort-fold-entries))
 
   ;; Use the same blank-line folding boundary when Org folds list items
   ;; indirectly while cycling a containing heading.

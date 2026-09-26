@@ -786,14 +786,17 @@ the first current target as the default.  Return TARGETS unchanged."
     (save-excursion
       (save-match-data
         (goto-char begin)
-        (unless (org-before-first-heading-p)
-          (org-back-to-heading t)
+        ;; A newly typed `*' is not yet a valid Org heading.
+        (when (condition-case nil
+                  (org-back-to-heading t)
+                (user-error nil))
           (my-org-updated-at--remember-subtree))
         (goto-char begin)
-        (while (re-search-forward org-heading-regexp end t)
-          (org-back-to-heading t)
+        (while (and (< (point) end)
+                    (re-search-forward org-heading-regexp end t))
+          (goto-char (match-beginning 0))
           (my-org-updated-at--remember-subtree)
-          (end-of-line))))))
+          (forward-line 1))))))
 
 (defun my-org-updated-at--before-save ()
   "Set `UPDATED_AT' on edited entries and their ancestors."

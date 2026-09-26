@@ -891,6 +891,36 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
               (org-cycle arg)))))
     (org-cycle arg)))
 
+(defun my-org-sort-keep-folds (function &rest args)
+  "Preserve outline folds while calling sorting FUNCTION with ARGS."
+  (let ((tag (make-symbol "org-sort-fold")))
+    (unwind-protect
+        (progn
+          ;; Text properties move with entries when `sort-subr' rearranges them.
+          (with-silent-modifications
+            (save-restriction
+              (widen)
+              (dolist (fold (org-fold-get-regions :specs 'outline))
+                (put-text-property
+                 (car fold) (1+ (car fold)) tag
+                 (- (cadr fold) (car fold))))))
+          (apply function args))
+      (save-excursion
+        (save-restriction
+          (widen)
+          (goto-char (point-min))
+          (while (< (point) (point-max))
+            (let ((length (get-text-property (point) tag)))
+              (when length
+                (org-fold-region (point) (+ (point) length) t 'outline)))
+            (goto-char
+             (or (next-single-property-change
+                  (point) tag nil (point-max))
+                 (point-max))))
+          (with-silent-modifications
+            (remove-text-properties
+             (point-min) (point-max) (list tag nil))))))))
+
 ;;;; Core configuration
 
 (use-package org
@@ -902,6 +932,7 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
               org-at-heading-p
               org-at-item-p
               org-fold-folded-p
+              org-fold-get-regions
               org-fold-hide-drawer-all
               org-fold-region
               org-get-next-sibling
@@ -998,6 +1029,10 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
 
   ;; Fold property drawers in the newly captured entry.
   (add-hook 'org-capture-mode-hook #'my-org-capture-fold-properties)
+
+  ;; Keep existing headline folds when sorting moves entries.
+  (unless (advice-member-p #'my-org-sort-keep-folds 'org-sort-entries)
+    (advice-add 'org-sort-entries :around #'my-org-sort-keep-folds))
 
   ;; Use the same blank-line folding boundary when Org folds list items
   ;; indirectly while cycling a containing heading.

@@ -293,12 +293,14 @@
                                  (selected-window))
                              (eq (cdr-safe my-tab-line--hovered-close-button)
                                  buffer))))
-              (let ((button (copy-sequence tab-line-close-button)))
-                (aset button 0 ?●)
+              (let ((dot (copy-sequence "●")))
+                (set-text-properties 0 1
+                                     (text-properties-at 0 tab-line-close-button)
+                                     dot)
                 ;; Use the tab color instead of the close button's gray.
                 (put-text-property 0 1 'face
-                                   '(:inherit nil :height 0.8) button)
-                button)
+                                   '(:inherit nil :height 0.8) dot)
+                (concat dot (substring tab-line-close-button 1)))
             tab-line-close-button))
          (text (tab-line-tab-name-format-default tab tabs))
          (tab-face (get-text-property 0 'face text)))
@@ -321,6 +323,7 @@
   :init
   (setq tab-line-tabs-function #'tab-line-tabs-fixed-window-buffers
         tab-line-new-button-show nil
+        tab-line-close-modified-button-show nil
         tab-line-separator ""
         tab-line-tab-name-function #'my-tab-line-tab-name)
   (global-tab-line-mode 1)

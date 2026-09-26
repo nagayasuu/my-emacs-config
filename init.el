@@ -729,6 +729,7 @@ the first current target as the default.  Return TARGETS unchanged."
           ":PROPERTIES:\n"
           ":ID: %(org-id-new)\n"
           ":CREATED_AT: %U\n"
+          ":UPDATED_AT: %U\n"
           ":END:\n"))
 
 (defun my-org-capture-project-heading ()
@@ -746,6 +747,70 @@ the first current target as the default.  Return TARGETS unchanged."
   "Fold property drawers after `org-capture'."
   (when (derived-mode-p 'org-mode)
     (org-fold-hide-drawer-all)))
+
+;;;; Entry modification timestamps
+
+(defvar-local my-org-updated-at--changed-headings nil
+  "Markers for edited headings and their ancestors since the last save.")
+
+(defvar-local my-org-updated-at--updating nil
+  "Non-nil while updating entry timestamps before saving.")
+
+(defun my-org-updated-at--remember-heading ()
+  "Remember the heading at point for the next save."
+  (let ((position (line-beginning-position)))
+    (unless (cl-some (lambda (entry)
+                       (= position (marker-position (car entry))))
+                     my-org-updated-at--changed-headings)
+      (push (cons (copy-marker position t)
+                  (org-entry-get nil "ID"))
+            my-org-updated-at--changed-headings))))
+
+(defun my-org-updated-at--remember-subtree ()
+  "Remember the heading at point and its ancestors for the next save."
+  (save-excursion
+    (my-org-updated-at--remember-heading)
+    (while (org-up-heading-safe)
+      (my-org-updated-at--remember-heading))))
+
+(defun my-org-updated-at--track-change (begin end _old-length)
+  "Remember headings containing a change from BEGIN to END."
+  (unless my-org-updated-at--updating
+    (save-excursion
+      (save-match-data
+        (goto-char begin)
+        (unless (org-before-first-heading-p)
+          (org-back-to-heading t)
+          (my-org-updated-at--remember-subtree))
+        (goto-char begin)
+        (while (re-search-forward org-heading-regexp end t)
+          (org-back-to-heading t)
+          (my-org-updated-at--remember-subtree)
+          (end-of-line))))))
+
+(defun my-org-updated-at--before-save ()
+  "Set `UPDATED_AT' on edited entries and their ancestors."
+  (let ((entries my-org-updated-at--changed-headings)
+        (timestamp (format-time-string (org-time-stamp-format t t)))
+        (my-org-updated-at--updating t))
+    (setq my-org-updated-at--changed-headings nil)
+    (save-excursion
+      (dolist (entry entries)
+        (let ((marker (car entry))
+              (id (cdr entry)))
+          (when (marker-buffer marker)
+            (goto-char marker)
+            (when (and (org-at-heading-p)
+                       (or (null id) (equal id (org-entry-get nil "ID")))
+                       (not (equal timestamp
+                                   (org-entry-get nil "UPDATED_AT"))))
+              (org-entry-put nil "UPDATED_AT" timestamp)))
+          (set-marker marker nil))))))
+
+(defun my-org-updated-at--setup ()
+  "Track modified Org entries in the current buffer."
+  (add-hook 'after-change-functions #'my-org-updated-at--track-change nil t)
+  (add-hook 'before-save-hook #'my-org-updated-at--before-save nil t))
 
 (defun my-org-archive-subtrees-without-open-todo ()
   "Archive direct child subtrees with no open TODO items without prompting."
@@ -911,10 +976,18 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
   (org-mode . variable-pitch-mode)
   ;; Visually indent content according to its heading level.
   (org-mode . org-indent-mode)
+  ;; Refresh timestamps for edited entries and their containing headings.
+  (org-mode . my-org-updated-at--setup)
 
   :config
   ;; Keep planning and property metadata in the fixed-pitch family.
   (my-apply-org-fixed-pitch-faces)
+
+  ;; Reinstall local hooks when this init file is reloaded with Org buffers open.
+  (dolist (buffer (buffer-list))
+    (with-current-buffer buffer
+      (when (derived-mode-p 'org-mode)
+        (my-org-updated-at--setup))))
 
   ;; Fold property drawers in the newly captured entry.
   (add-hook 'org-capture-mode-hook #'my-org-capture-fold-properties)

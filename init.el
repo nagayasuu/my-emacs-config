@@ -8,6 +8,10 @@
 
 ;;; Code:
 
+;; Hide warnings about third-party Lisp files without a lexical-binding cookie.
+(require 'warnings)
+(add-to-list 'warning-suppress-log-types '(files missing-lexbind-cookie))
+
 ;;; Bootstrap
 
 ;;;; Customize storage

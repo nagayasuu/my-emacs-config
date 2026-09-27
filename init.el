@@ -1147,10 +1147,11 @@ folds that separator directly.  With prefix ARG, use regular Org cycling."
    (format-time-string (org-time-stamp-format t t))))
 
 (defun my-org-journal-new-entry-on-startup ()
-  "Create today's date heading and carry over TODO items if it is absent."
+  "Open today's journal, creating its date heading if absent."
   (require 'org-journal)
-  (unless (member (calendar-current-date)
-                  (org-journal--list-dates))
+  (if (member (calendar-current-date)
+              (org-journal--list-dates))
+      (org-journal-open-current-journal-file)
     (org-journal-new-entry t)))
 
 (defun my-org-journal--at-heading-p ()

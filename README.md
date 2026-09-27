@@ -26,7 +26,10 @@ The following external Emacs packages are installed automatically by
 | [`doric-themes`](https://github.com/protesilaos/doric-themes) | Provides the Doric Mermaid color theme. |
 | [`simple-modeline`](https://github.com/gexplorer/simple-modeline) | Provides a minimal mode line. |
 | [`nerd-icons`](https://github.com/rainstormstudio/nerd-icons.el) | Adds file-type icons to tab-line tabs. |
+| [`nerd-icons-dired`](https://github.com/rainstormstudio/nerd-icons-dired) | Adds Nerd Font icons to Dired Sidebar. |
 | [`easy-kill`](https://github.com/leoliu/easy-kill) | Provides context-aware commands for copying and marking text. |
+| [`dired-subtree`](https://github.com/Fuco1/dired-hacks) | Expands and collapses directories inside Dired Sidebar. |
+| [`dired-sidebar`](https://github.com/jojojames/dired-sidebar) | Opens Dired in a toggleable sidebar. |
 | [`mini-frame`](https://github.com/muffinmad/emacs-mini-frame) | Displays the minibuffer in a child frame. |
 | [`vertico`](https://github.com/minad/vertico) | Displays minibuffer completion candidates vertically. |
 | [`orderless`](https://github.com/oantolin/orderless) | Enables order-independent completion matching. |

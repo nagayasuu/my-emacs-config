@@ -332,6 +332,7 @@
         tab-line-tab-name-function #'my-tab-line-tab-name)
   (global-tab-line-mode 1)
   :config
+  (add-to-list 'tab-line-exclude-modes 'dired-sidebar-mode)
   (setq tab-line-tab-name-format-function #'my-tab-line-tab-name-format
         tab-line-close-button
         (concat
@@ -376,6 +377,26 @@
    ([remap mark-sexp] . easy-mark)))
 
 ;;;; Files and session persistence
+
+(use-package dired-subtree
+  :ensure t
+  :commands (dired-subtree-toggle dired-subtree-cycle))
+
+(use-package nerd-icons-dired
+  :ensure t
+  :commands (nerd-icons-dired-mode))
+
+(defun my-dired-sidebar-directories-first ()
+  "Show directories before files in Dired Sidebar."
+  (dired-sort-other
+   (concat dired-actual-switches " --group-directories-first")))
+
+(use-package dired-sidebar
+  :ensure t
+  :commands (dired-sidebar-toggle-sidebar)
+  :hook (dired-sidebar-mode . my-dired-sidebar-directories-first)
+  :config
+  (setq dired-sidebar-theme 'nerd-icons))
 
 ;; Disabling auto-save also disables its crash-recovery data.
 (setq make-backup-files nil

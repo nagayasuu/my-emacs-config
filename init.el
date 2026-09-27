@@ -1259,10 +1259,9 @@ is created."
     (select-window target-window))
   (org-agenda-list nil nil 'day))
 
-;; Run after the startup journal hook so the agenda remains visible.
+;; Run before the startup journal hook so the journal remains visible.
 (add-hook 'emacs-startup-hook
-          #'my-org-agenda-show-today-on-startup
-          t)
+          #'my-org-agenda-show-today-on-startup)
 
 ;;; Customize
 

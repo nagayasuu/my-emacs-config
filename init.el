@@ -396,7 +396,8 @@
   :commands (dired-sidebar-toggle-sidebar)
   :hook (dired-sidebar-mode . my-dired-sidebar-directories-first)
   :config
-  (setq dired-sidebar-theme 'nerd-icons))
+  (setq dired-sidebar-theme 'nerd-icons
+        dired-sidebar-no-delete-other-windows t))
 
 ;; Disabling auto-save also disables its crash-recovery data.
 (setq make-backup-files nil

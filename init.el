@@ -112,9 +112,7 @@
 
 ;;;; Appearance
 
-(defconst my-default-font-size
-  (if (eq system-type 'gnu/linux) 13 11)
-  "Default font size for the current operating system.")
+(defconst my-default-font-size 11 "Default font size.")
 
 (defconst my-default-font
   (format "PlemolJP-%d" my-default-font-size)
